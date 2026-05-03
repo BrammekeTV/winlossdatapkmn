@@ -20,6 +20,7 @@
     <button class="tab-btn" data-tab="opp-decks">🆚 Opp. Decks</button>
     <button class="tab-btn" data-tab="stats">📊 Stats</button>
     <button class="tab-btn" data-tab="history">📋 History</button>
+    <button class="tab-btn" data-tab="data">⚙ Data</button>
   </nav>
 
   <main>
@@ -239,6 +240,36 @@
         </table>
         </div>
         <p id="no-history" class="empty-msg">No matches logged yet.</p>
+      </div>
+    </section>
+    <!-- DATA TAB -->
+    <section id="tab-data" class="tab-content">
+      <div class="card">
+        <h2>Export Data</h2>
+        <p class="data-desc">Download all your decks, opponent decks, and match history as a JSON file.</p>
+        <button type="button" id="export-btn" class="btn-primary">⬇ Export Data</button>
+      </div>
+
+      <div class="card" style="margin-top:1.25rem">
+        <h2>Import Data</h2>
+        <p class="data-desc">Restore data from a previously exported JSON file. <strong>Existing data will be replaced.</strong></p>
+        <div class="import-row">
+          <label for="import-file" class="btn-secondary import-file-label">📂 Choose File</label>
+          <input type="file" id="import-file" accept=".json,application/json" class="hidden" />
+          <span id="import-file-name" class="import-file-name">No file chosen</span>
+        </div>
+        <button type="button" id="import-btn" class="btn-primary" style="margin-top:.75rem" disabled>⬆ Import Data</button>
+        <p id="import-success" class="success-msg hidden">Data imported successfully!</p>
+        <p id="import-error" class="error-msg hidden"></p>
+      </div>
+
+      <div class="card" style="margin-top:1.25rem">
+        <h2>Clear Data</h2>
+        <p class="data-desc">Permanently delete data. These actions cannot be undone.</p>
+        <div class="clear-actions">
+          <button type="button" id="clear-matches-btn" class="btn-danger">🗑 Clear Match History</button>
+          <button type="button" id="clear-all-btn" class="btn-danger">🗑 Clear All Data</button>
+        </div>
       </div>
     </section>
   </main>

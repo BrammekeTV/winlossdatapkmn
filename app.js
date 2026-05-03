@@ -1107,6 +1107,145 @@
   });
 
   // ────────────────────────────────────────────────────────────
+  // DATA TAB – Export / Import / Clear
+  // ────────────────────────────────────────────────────────────
+
+  document.getElementById('export-btn').addEventListener('click', () => {
+    const data = {
+      decks,
+      oppDecks,
+      matches
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `pkmn-tracker-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  const importFileInput   = document.getElementById('import-file');
+  const importFileNameEl  = document.getElementById('import-file-name');
+  const importBtn         = document.getElementById('import-btn');
+  const importSuccessEl   = document.getElementById('import-success');
+  const importErrorEl     = document.getElementById('import-error');
+  let pendingImportData   = null;
+
+  importFileInput.addEventListener('change', () => {
+    const file = importFileInput.files[0];
+    importSuccessEl.classList.add('hidden');
+    importErrorEl.classList.add('hidden');
+    pendingImportData = null;
+    importBtn.disabled = true;
+
+    if (!file) {
+      importFileNameEl.textContent = 'No file chosen';
+      return;
+    }
+    importFileNameEl.textContent = file.name;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid format');
+        // Validate decks array
+        if ('decks' in parsed) {
+          if (!Array.isArray(parsed.decks)) throw new Error('decks must be an array');
+          for (const d of parsed.decks) {
+            if (typeof d !== 'string' && (typeof d !== 'object' || d === null || typeof d.name !== 'string')) {
+              throw new Error('Each deck must have a name');
+            }
+          }
+        }
+        // Validate oppDecks object
+        if ('oppDecks' in parsed) {
+          if (typeof parsed.oppDecks !== 'object' || parsed.oppDecks === null || Array.isArray(parsed.oppDecks)) {
+            throw new Error('oppDecks must be an object');
+          }
+          for (const sprites of Object.values(parsed.oppDecks)) {
+            if (!Array.isArray(sprites)) throw new Error('oppDecks values must be arrays');
+          }
+        }
+        // Validate matches array
+        if ('matches' in parsed) {
+          if (!Array.isArray(parsed.matches)) throw new Error('matches must be an array');
+          for (const m of parsed.matches) {
+            if (typeof m !== 'object' || m === null ||
+                typeof m.myDeck !== 'string' || typeof m.oppDeck !== 'string' ||
+                typeof m.result !== 'string' || typeof m.date !== 'string') {
+              throw new Error('Each match must have myDeck, oppDeck, result, and date');
+            }
+          }
+        }
+        pendingImportData = parsed;
+        importBtn.disabled = false;
+      } catch (err) {
+        importErrorEl.textContent = `Invalid file: ${err.message}. Please choose a valid export file.`;
+        importErrorEl.classList.remove('hidden');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  importBtn.addEventListener('click', () => {
+    if (!pendingImportData) return;
+    if (!confirm('This will replace all existing data. Continue?')) return;
+
+    if (Array.isArray(pendingImportData.decks)) {
+      decks = pendingImportData.decks.map(d => typeof d === 'string' ? { name: d, sprites: [] } : d);
+      save(KEYS.decks, decks);
+    }
+    if (pendingImportData.oppDecks && typeof pendingImportData.oppDecks === 'object' && !Array.isArray(pendingImportData.oppDecks)) {
+      oppDecks = pendingImportData.oppDecks;
+      save(KEYS.oppDecks, oppDecks);
+    }
+    if (Array.isArray(pendingImportData.matches)) {
+      matches = pendingImportData.matches;
+      save(KEYS.matches, matches);
+    }
+
+    pendingImportData = null;
+    importBtn.disabled = true;
+    importFileInput.value = '';
+    importFileNameEl.textContent = 'No file chosen';
+    importErrorEl.classList.add('hidden');
+    importSuccessEl.classList.remove('hidden');
+
+    renderDecks();
+    renderOppDecks();
+    populateDeckSelects();
+    renderStats();
+    renderHistory();
+  });
+
+  document.getElementById('clear-matches-btn').addEventListener('click', () => {
+    if (!confirm('Delete all match history? This cannot be undone.')) return;
+    matches = [];
+    save(KEYS.matches, matches);
+    renderStats();
+    renderHistory();
+  });
+
+  document.getElementById('clear-all-btn').addEventListener('click', () => {
+    if (!confirm('Delete ALL data (decks, opponent decks, and match history)? This cannot be undone.')) return;
+    decks    = [];
+    oppDecks = {};
+    matches  = [];
+    save(KEYS.decks,    decks);
+    save(KEYS.oppDecks, oppDecks);
+    save(KEYS.matches,  matches);
+    renderDecks();
+    renderOppDecks();
+    populateDeckSelects();
+    renderStats();
+    renderHistory();
+  });
+
+  // ────────────────────────────────────────────────────────────
   // INIT
   // ────────────────────────────────────────────────────────────
   renderDecks();
