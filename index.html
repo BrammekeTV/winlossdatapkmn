@@ -17,6 +17,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="log">📝 Log Match</button>
     <button class="tab-btn" data-tab="decks">🃏 Decks</button>
+    <button class="tab-btn" data-tab="opp-decks">🆚 Opp. Decks</button>
     <button class="tab-btn" data-tab="stats">📊 Stats</button>
     <button class="tab-btn" data-tab="history">📋 History</button>
   </nav>
@@ -35,12 +36,17 @@
             <div id="my-deck-sprite-preview" class="deck-sprite-preview"></div>
           </div>
           <div class="form-group">
-            <label for="opp-deck">Opponent's Deck</label>
+            <label for="opp-deck-select">Opponent's Deck</label>
             <div class="opp-deck-row">
-              <input type="text" id="opp-deck" placeholder="e.g. Charizard ex" required autocomplete="off" list="opp-deck-list" />
-              <datalist id="opp-deck-list"></datalist>
+              <select id="opp-deck-select">
+                <option value="" disabled selected>— select opponent deck —</option>
+              </select>
               <button type="button" class="btn-pick-sprite" id="pick-opp-sprite-btn">🔍 Sprites</button>
             </div>
+            <div id="opp-new-deck-wrap" class="hidden">
+              <input type="text" id="opp-deck-new-input" placeholder="New opponent deck name…" autocomplete="off" />
+            </div>
+            <input type="hidden" id="opp-deck" />
             <div id="opp-deck-sprite-preview" class="deck-sprite-preview"></div>
           </div>
           <div class="form-group">
@@ -108,6 +114,39 @@
         </form>
         <ul id="deck-list" class="deck-list"></ul>
         <p id="no-decks" class="empty-msg">No decks yet. Add your first deck above!</p>
+      </div>
+    </section>
+
+    <!-- OPP. DECKS TAB -->
+    <section id="tab-opp-decks" class="tab-content">
+      <div class="card">
+        <h2>Opponent Decks</h2>
+        <form id="add-opp-deck-form">
+          <div class="form-group inline">
+            <input type="text" id="new-opp-deck-name" placeholder="Opponent deck name (e.g. Charizard ex)" autocomplete="off" required />
+            <button type="submit" class="btn-primary">Add Deck</button>
+          </div>
+          <div class="sprite-inputs">
+            <div class="sprite-input-group">
+              <label>Sprite 1 <span class="optional">(optional)</span></label>
+              <div class="sprite-pick-row">
+                <button type="button" class="btn-pick-sprite" id="pick-opp-s1-btn">🔍 Pick Sprite</button>
+                <input type="hidden" id="new-opp-sprite-1" />
+                <img class="pkmn-sprite" id="opp-sprite-preview-1" width="32" height="32" alt="" style="display:none" />
+              </div>
+            </div>
+            <div class="sprite-input-group">
+              <label>Sprite 2 <span class="optional">(optional)</span></label>
+              <div class="sprite-pick-row">
+                <button type="button" class="btn-pick-sprite" id="pick-opp-s2-btn">🔍 Pick Sprite</button>
+                <input type="hidden" id="new-opp-sprite-2" />
+                <img class="pkmn-sprite" id="opp-sprite-preview-2" width="32" height="32" alt="" style="display:none" />
+              </div>
+            </div>
+          </div>
+        </form>
+        <ul id="opp-deck-list" class="deck-list"></ul>
+        <p id="no-opp-decks" class="empty-msg">No opponent decks yet. Add one above, or they will appear here after logging matches!</p>
       </div>
     </section>
 
@@ -183,12 +222,13 @@
             </select>
           </div>
         </div>
-        <table id="history-table" class="data-table">
+        <div class="history-table-wrap">
+        <table id="history-table" class="data-table history-table">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Your Deck</th>
-              <th>Opponent</th>
+              <th class="deck-col">Your Deck</th>
+              <th class="deck-col">Opponent</th>
               <th>Event</th>
               <th>Result</th>
               <th>Notes</th>
@@ -197,6 +237,7 @@
           </thead>
           <tbody id="history-body"></tbody>
         </table>
+        </div>
         <p id="no-history" class="empty-msg">No matches logged yet.</p>
       </div>
     </section>
@@ -219,6 +260,148 @@
       <div class="modal-footer">
         <button type="button" id="sprite-picker-cancel" class="btn-secondary">Cancel</button>
         <button type="button" id="sprite-picker-confirm" class="btn-primary">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit match modal -->
+  <div id="edit-match-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-match-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="edit-match-title">Edit Match</h3>
+        <button type="button" id="edit-match-close" class="btn-modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-match-id" />
+        <div class="form-group">
+          <label for="edit-my-deck">Your Deck</label>
+          <select id="edit-my-deck" required>
+            <option value="" disabled selected>— select your deck —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="edit-opp-deck-select">Opponent's Deck</label>
+          <div class="opp-deck-row">
+            <select id="edit-opp-deck-select">
+              <option value="" disabled selected>— select opponent deck —</option>
+            </select>
+          </div>
+          <div id="edit-opp-new-deck-wrap" class="hidden">
+            <input type="text" id="edit-opp-deck-new-input" placeholder="New opponent deck name…" autocomplete="off" />
+          </div>
+          <input type="hidden" id="edit-opp-deck" />
+        </div>
+        <div class="form-group">
+          <label>Result</label>
+          <div class="result-buttons">
+            <button type="button" class="result-btn win edit-result-btn" data-result="Win">✔ Win</button>
+            <button type="button" class="result-btn loss edit-result-btn" data-result="Loss">✘ Loss</button>
+            <button type="button" class="result-btn tie edit-result-btn" data-result="Tie">– Tie</button>
+          </div>
+          <input type="hidden" id="edit-result-input" />
+        </div>
+        <div class="form-group">
+          <label for="edit-event-type">Event</label>
+          <select id="edit-event-type" required>
+            <option value="" disabled selected>— select event —</option>
+            <option value="TCGLive">TCGLive</option>
+            <option value="Challenge">Challenge</option>
+            <option value="Cup">Cup</option>
+            <option value="Regional">Regional</option>
+            <option value="International">International</option>
+            <option value="Worlds">Worlds</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="edit-match-date">Date</label>
+          <input type="date" id="edit-match-date" required />
+        </div>
+        <div class="form-group">
+          <label for="edit-match-notes">Notes <span class="optional">(optional)</span></label>
+          <textarea id="edit-match-notes" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="edit-match-cancel" class="btn-secondary">Cancel</button>
+        <button type="button" id="edit-match-save" class="btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit deck modal -->
+  <div id="edit-deck-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-deck-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="edit-deck-title">Edit Deck</h3>
+        <button type="button" id="edit-deck-close" class="btn-modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-deck-original-name" />
+        <div class="form-group">
+          <label for="edit-deck-name">Deck Name</label>
+          <input type="text" id="edit-deck-name" required />
+        </div>
+        <div class="sprite-inputs">
+          <div class="sprite-input-group">
+            <label>Sprite 1 <span class="optional">(optional)</span></label>
+            <div class="sprite-pick-row">
+              <button type="button" class="btn-pick-sprite" id="edit-pick-sprite-1-btn">🔍 Pick Sprite</button>
+              <input type="hidden" id="edit-sprite-1" />
+              <img class="pkmn-sprite" id="edit-sprite-preview-1" width="32" height="32" alt="" style="display:none" />
+            </div>
+          </div>
+          <div class="sprite-input-group">
+            <label>Sprite 2 <span class="optional">(optional)</span></label>
+            <div class="sprite-pick-row">
+              <button type="button" class="btn-pick-sprite" id="edit-pick-sprite-2-btn">🔍 Pick Sprite</button>
+              <input type="hidden" id="edit-sprite-2" />
+              <img class="pkmn-sprite" id="edit-sprite-preview-2" width="32" height="32" alt="" style="display:none" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="edit-deck-cancel" class="btn-secondary">Cancel</button>
+        <button type="button" id="edit-deck-save" class="btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit opponent deck modal -->
+  <div id="edit-opp-deck-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-opp-deck-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="edit-opp-deck-title">Edit Opponent Deck</h3>
+        <button type="button" id="edit-opp-deck-close" class="btn-modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-opp-deck-original-name" />
+        <div class="form-group">
+          <label for="edit-opp-deck-name">Deck Name</label>
+          <input type="text" id="edit-opp-deck-name" required />
+        </div>
+        <div class="sprite-inputs">
+          <div class="sprite-input-group">
+            <label>Sprite 1 <span class="optional">(optional)</span></label>
+            <div class="sprite-pick-row">
+              <button type="button" class="btn-pick-sprite" id="edit-opp-pick-sprite-1-btn">🔍 Pick Sprite</button>
+              <input type="hidden" id="edit-opp-sprite-1" />
+              <img class="pkmn-sprite" id="edit-opp-sprite-preview-1" width="32" height="32" alt="" style="display:none" />
+            </div>
+          </div>
+          <div class="sprite-input-group">
+            <label>Sprite 2 <span class="optional">(optional)</span></label>
+            <div class="sprite-pick-row">
+              <button type="button" class="btn-pick-sprite" id="edit-opp-pick-sprite-2-btn">🔍 Pick Sprite</button>
+              <input type="hidden" id="edit-opp-sprite-2" />
+              <img class="pkmn-sprite" id="edit-opp-sprite-preview-2" width="32" height="32" alt="" style="display:none" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="edit-opp-deck-cancel" class="btn-secondary">Cancel</button>
+        <button type="button" id="edit-opp-deck-save" class="btn-primary">Save Changes</button>
       </div>
     </div>
   </div>

@@ -57,8 +57,9 @@
       document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-      if (btn.dataset.tab === 'stats')   renderStats();
-      if (btn.dataset.tab === 'history') renderHistory();
+      if (btn.dataset.tab === 'stats')     renderStats();
+      if (btn.dataset.tab === 'history')   renderHistory();
+      if (btn.dataset.tab === 'opp-decks') renderOppDecks();
     });
   });
 
@@ -230,6 +231,16 @@
       const sprites = deckSpritesHtml(deck.name);
       nameSpan.innerHTML = (sprites ? sprites + ' ' : '') + esc(deck.name);
       li.appendChild(nameSpan);
+
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-edit';
+      editBtn.textContent = '✏ Edit';
+      editBtn.addEventListener('click', () => openEditDeckModal(deck.name));
+      actions.appendChild(editBtn);
+
       const del = document.createElement('button');
       del.className = 'btn-delete';
       del.textContent = 'Remove';
@@ -240,7 +251,8 @@
         renderDecks();
         populateDeckSelects();
       });
-      li.appendChild(del);
+      actions.appendChild(del);
+      li.appendChild(actions);
       deckListEl.appendChild(li);
     });
   }
@@ -268,15 +280,47 @@
     if (savedHistoryDeck) historyDeckSel.value = savedHistoryDeck;
 
     updateMyDeckSpritePreview();
-    updateOppDeckDatalist();
+    populateOppDeckSelects();
   }
 
-  function updateOppDeckDatalist() {
-    const dl = document.getElementById('opp-deck-list');
-    if (!dl) return;
-    const names = new Set([...matches.map(m => m.oppDeck), ...Object.keys(oppDecks)]);
-    dl.innerHTML = [...names].filter(Boolean).sort()
-      .map(n => `<option value="${esc(n)}"></option>`).join('');
+  function populateOppDeckSelects() {
+    const names = getAllOppDeckNames();
+    [
+      document.getElementById('opp-deck-select'),
+      document.getElementById('edit-opp-deck-select')
+    ].forEach(sel => {
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="" disabled selected>— select opponent deck —</option>';
+      names.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n;
+        opt.textContent = n;
+        sel.appendChild(opt);
+      });
+      const newOpt = document.createElement('option');
+      newOpt.value = '__new__';
+      newOpt.textContent = '+ Add new opponent deck…';
+      sel.appendChild(newOpt);
+      if (cur && cur !== '') sel.value = cur;
+    });
+
+    // Also populate the edit match "your deck" select
+    const editMyDeckSel = document.getElementById('edit-my-deck');
+    if (editMyDeckSel) {
+      const cur = editMyDeckSel.value;
+      editMyDeckSel.innerHTML = '<option value="" disabled selected>— select your deck —</option>';
+      const allDeckNames = new Set([...decks.map(d => d.name), ...matches.map(m => m.myDeck)]);
+      [...allDeckNames].sort().forEach(d => {
+        editMyDeckSel.insertAdjacentHTML('beforeend', `<option value="${esc(d)}">${esc(d)}</option>`);
+      });
+      if (cur) editMyDeckSel.value = cur;
+    }
+  }
+
+  function getAllOppDeckNames() {
+    const names = new Set([...Object.keys(oppDecks), ...matches.map(m => m.oppDeck).filter(Boolean)]);
+    return [...names].sort();
   }
 
   // ────────────────────────────────────────────────────────────
@@ -297,16 +341,44 @@
     const name    = document.getElementById('opp-deck').value.trim();
     const preview = document.getElementById('opp-deck-sprite-preview');
     if (!preview) return;
-    preview.innerHTML = oppSpritesHtml(name);
+    preview.innerHTML = oppSpritesHtml(name) || deckSpritesHtml(name);
   }
 
   document.getElementById('my-deck').addEventListener('change', updateMyDeckSpritePreview);
-  document.getElementById('opp-deck').addEventListener('input', updateOppDeckSpritePreview);
+
+  // ── Shared helper: wire up opp-deck select + new-input → hidden input sync ──
+  function setupOppDeckSelectHandlers(selectId, newWrapId, newInputId, hiddenId, onChangeCb) {
+    document.getElementById(selectId).addEventListener('change', function () {
+      const newWrap  = document.getElementById(newWrapId);
+      const hiddenIn = document.getElementById(hiddenId);
+      if (this.value === '__new__') {
+        newWrap.classList.remove('hidden');
+        hiddenIn.value = document.getElementById(newInputId).value.trim();
+      } else {
+        newWrap.classList.add('hidden');
+        hiddenIn.value = this.value;
+      }
+      if (onChangeCb) onChangeCb();
+    });
+    document.getElementById(newInputId).addEventListener('input', function () {
+      document.getElementById(hiddenId).value = this.value.trim();
+      if (onChangeCb) onChangeCb();
+    });
+  }
+
+  setupOppDeckSelectHandlers(
+    'opp-deck-select', 'opp-new-deck-wrap', 'opp-deck-new-input', 'opp-deck',
+    updateOppDeckSpritePreview
+  );
+  setupOppDeckSelectHandlers(
+    'edit-opp-deck-select', 'edit-opp-new-deck-wrap', 'edit-opp-deck-new-input', 'edit-opp-deck',
+    null
+  );
 
   // Opponent sprite picker
   document.getElementById('pick-opp-sprite-btn').addEventListener('click', () => {
     const name = document.getElementById('opp-deck').value.trim();
-    if (!name) { alert('Please enter the opponent\'s deck name first.'); return; }
+    if (!name) { alert('Please select or enter the opponent\'s deck name first.'); return; }
     const current = oppDecks[name] || [];
     openPicker(current, sprites => {
       if (sprites.length) {
@@ -316,7 +388,7 @@
       }
       save(KEYS.oppDecks, oppDecks);
       updateOppDeckSpritePreview();
-      updateOppDeckDatalist();
+      populateOppDeckSelects();
     });
   });
 
@@ -324,9 +396,9 @@
   document.getElementById('match-date').valueAsDate = new Date();
 
   // Result toggle buttons
-  document.querySelectorAll('.result-btn').forEach(btn => {
+  document.querySelectorAll('#log-form .result-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.result-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#log-form .result-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       resultInput.value = btn.dataset.result;
     });
@@ -341,6 +413,7 @@
     const date    = document.getElementById('match-date').value;
     const notes   = document.getElementById('match-notes').value.trim();
 
+    if (!oppDeck) { alert('Please select an opponent deck or enter a new deck name.'); return; }
     if (!result) { alert('Please select Win, Loss, or Tie.'); return; }
 
     matches.push({ id: Date.now(), myDeck, oppDeck, result, event, date, notes });
@@ -351,6 +424,9 @@
     resultInput.value = '';
     document.getElementById('match-date').valueAsDate = new Date();
     document.getElementById('opp-deck-sprite-preview').innerHTML = '';
+    document.getElementById('opp-deck').value = '';
+    document.getElementById('opp-new-deck-wrap').classList.add('hidden');
+    document.getElementById('opp-deck-new-input').value = '';
 
     logSuccess.classList.remove('hidden');
     setTimeout(() => logSuccess.classList.add('hidden'), 2500);
@@ -583,6 +659,7 @@
       tr.appendChild(td(dateStr));
 
       const deckCell = document.createElement('td');
+      deckCell.className = 'deck-cell';
       const spritesHtml = deckSpritesHtml(m.myDeck);
       if (spritesHtml) {
         deckCell.innerHTML = spritesHtml + ' <strong>' + esc(m.myDeck) + '</strong>';
@@ -594,6 +671,7 @@
       tr.appendChild(deckCell);
 
       const oppCell = document.createElement('td');
+      oppCell.className = 'deck-cell';
       const oppSpr  = oppSpritesHtml(m.oppDeck);
       if (oppSpr) {
         oppCell.innerHTML = oppSpr + ' ' + esc(m.oppDeck);
@@ -617,7 +695,18 @@
       notesCell.textContent = m.notes || '';
       tr.appendChild(notesCell);
 
-      const delCell = document.createElement('td');
+      const actCell = document.createElement('td');
+      actCell.className = 'action-cell';
+      const actWrap = document.createElement('div');
+      actWrap.className = 'row-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.className   = 'btn-edit';
+      editBtn.textContent = '✏';
+      editBtn.title       = 'Edit match';
+      editBtn.addEventListener('click', () => openEditMatchModal(m.id));
+      actWrap.appendChild(editBtn);
+
       const delBtn  = document.createElement('button');
       delBtn.className   = 'btn-delete';
       delBtn.textContent = '✕';
@@ -629,8 +718,9 @@
         renderHistory();
         renderStats();
       });
-      delCell.appendChild(delBtn);
-      tr.appendChild(delCell);
+      actWrap.appendChild(delBtn);
+      actCell.appendChild(actWrap);
+      tr.appendChild(actCell);
 
       historyBody.appendChild(tr);
     });
@@ -669,6 +759,352 @@
     if (!sprites || !sprites.length) return '';
     return sprites.map(s => spriteImg(s)).join(' ');
   }
+
+  // ────────────────────────────────────────────────────────────
+  // OPP. DECKS TAB
+  // ────────────────────────────────────────────────────────────
+  let pendingOppSprites = [null, null];
+
+  function updateOppDeckTabSpritePreview(idx) {
+    const name    = pendingOppSprites[idx];
+    const preview = document.getElementById(`opp-sprite-preview-${idx + 1}`);
+    const input   = document.getElementById(`new-opp-sprite-${idx + 1}`);
+    if (name) {
+      const id = spriteIdFromName(name);
+      if (id) { preview.src = homeUrl(id); preview.alt = name; }
+      preview.style.display = 'inline-block';
+      input.value = name;
+    } else {
+      preview.src = '';
+      preview.style.display = 'none';
+      input.value = '';
+    }
+  }
+
+  document.getElementById('pick-opp-s1-btn').addEventListener('click', () => {
+    openPicker(pendingOppSprites[0] ? [pendingOppSprites[0]] : [], sprites => {
+      pendingOppSprites[0] = sprites[0] || null;
+      pendingOppSprites[1] = sprites[1] || pendingOppSprites[1] || null;
+      updateOppDeckTabSpritePreview(0);
+      if (sprites[1] !== undefined) updateOppDeckTabSpritePreview(1);
+    });
+  });
+
+  document.getElementById('pick-opp-s2-btn').addEventListener('click', () => {
+    openPicker(pendingOppSprites[1] ? [pendingOppSprites[1]] : [], sprites => {
+      pendingOppSprites[1] = sprites[0] || null;
+      updateOppDeckTabSpritePreview(1);
+    });
+  });
+
+  document.getElementById('add-opp-deck-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('new-opp-deck-name').value.trim();
+    if (!name) return;
+    const sprites = pendingOppSprites.filter(Boolean);
+    oppDecks[name] = sprites.length ? sprites : (oppDecks[name] || []);
+    save(KEYS.oppDecks, oppDecks);
+    document.getElementById('new-opp-deck-name').value = '';
+    pendingOppSprites = [null, null];
+    updateOppDeckTabSpritePreview(0);
+    updateOppDeckTabSpritePreview(1);
+    renderOppDecks();
+    populateOppDeckSelects();
+  });
+
+  function renderOppDecks() {
+    const listEl = document.getElementById('opp-deck-list');
+    const noEl   = document.getElementById('no-opp-decks');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    const names = getAllOppDeckNames();
+    noEl.classList.toggle('hidden', names.length > 0);
+    names.forEach(name => {
+      const li = document.createElement('li');
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'deck-name-label';
+      const sprites = oppSpritesHtml(name);
+      nameSpan.innerHTML = (sprites ? sprites + ' ' : '') + esc(name);
+      li.appendChild(nameSpan);
+
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-edit';
+      editBtn.textContent = '✏ Edit';
+      editBtn.addEventListener('click', () => openEditOppDeckModal(name));
+      actions.appendChild(editBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-delete';
+      delBtn.textContent = 'Remove';
+      delBtn.addEventListener('click', () => {
+        if (!confirm(`Remove "${name}" from opponent decks? This won't delete match history.`)) return;
+        delete oppDecks[name];
+        save(KEYS.oppDecks, oppDecks);
+        renderOppDecks();
+        populateOppDeckSelects();
+      });
+      actions.appendChild(delBtn);
+      li.appendChild(actions);
+      listEl.appendChild(li);
+    });
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // EDIT DECK MODAL
+  // ────────────────────────────────────────────────────────────
+  let editDeckSprites = [null, null];
+
+  function updateEditDeckSpritePreview(idx) {
+    const name    = editDeckSprites[idx];
+    const preview = document.getElementById(`edit-sprite-preview-${idx + 1}`);
+    const input   = document.getElementById(`edit-sprite-${idx + 1}`);
+    if (name) {
+      const id = spriteIdFromName(name);
+      if (id) { preview.src = homeUrl(id); preview.alt = name; }
+      preview.style.display = 'inline-block';
+      input.value = name;
+    } else {
+      preview.src = '';
+      preview.style.display = 'none';
+      input.value = '';
+    }
+  }
+
+  function openEditDeckModal(deckName) {
+    const deck = decks.find(d => d.name === deckName);
+    if (!deck) return;
+    document.getElementById('edit-deck-original-name').value = deckName;
+    document.getElementById('edit-deck-name').value = deckName;
+    editDeckSprites[0] = deck.sprites[0] || null;
+    editDeckSprites[1] = deck.sprites[1] || null;
+    updateEditDeckSpritePreview(0);
+    updateEditDeckSpritePreview(1);
+    document.getElementById('edit-deck-modal').classList.remove('hidden');
+  }
+
+  function closeEditDeckModal() {
+    document.getElementById('edit-deck-modal').classList.add('hidden');
+  }
+
+  document.getElementById('edit-deck-close').addEventListener('click', closeEditDeckModal);
+  document.getElementById('edit-deck-cancel').addEventListener('click', closeEditDeckModal);
+  document.getElementById('edit-deck-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('edit-deck-modal')) closeEditDeckModal();
+  });
+
+  document.getElementById('edit-pick-sprite-1-btn').addEventListener('click', () => {
+    openPicker(editDeckSprites[0] ? [editDeckSprites[0]] : [], sprites => {
+      editDeckSprites[0] = sprites[0] || null;
+      editDeckSprites[1] = sprites[1] || editDeckSprites[1] || null;
+      updateEditDeckSpritePreview(0);
+      if (sprites[1] !== undefined) updateEditDeckSpritePreview(1);
+    });
+  });
+
+  document.getElementById('edit-pick-sprite-2-btn').addEventListener('click', () => {
+    openPicker(editDeckSprites[1] ? [editDeckSprites[1]] : [], sprites => {
+      editDeckSprites[1] = sprites[0] || null;
+      updateEditDeckSpritePreview(1);
+    });
+  });
+
+  document.getElementById('edit-deck-save').addEventListener('click', () => {
+    const originalName = document.getElementById('edit-deck-original-name').value;
+    const newName      = document.getElementById('edit-deck-name').value.trim();
+    if (!newName) { alert('Deck name cannot be empty.'); return; }
+    if (newName !== originalName && decks.some(d => d.name === newName)) {
+      alert(`"${newName}" already exists.`); return;
+    }
+    const sprites = editDeckSprites.filter(Boolean);
+    const idx = decks.findIndex(d => d.name === originalName);
+    if (idx === -1) return;
+    decks[idx] = { name: newName, sprites };
+    // Update match history references if name changed
+    if (newName !== originalName) {
+      matches = matches.map(m => m.myDeck === originalName ? { ...m, myDeck: newName } : m);
+      save(KEYS.matches, matches);
+    }
+    save(KEYS.decks, decks);
+    closeEditDeckModal();
+    renderDecks();
+    populateDeckSelects();
+    renderHistory();
+    renderStats();
+  });
+
+  // ────────────────────────────────────────────────────────────
+  // EDIT OPP. DECK MODAL
+  // ────────────────────────────────────────────────────────────
+  let editOppDeckSprites = [null, null];
+
+  function updateEditOppDeckSpritePreview(idx) {
+    const name    = editOppDeckSprites[idx];
+    const preview = document.getElementById(`edit-opp-sprite-preview-${idx + 1}`);
+    const input   = document.getElementById(`edit-opp-sprite-${idx + 1}`);
+    if (name) {
+      const id = spriteIdFromName(name);
+      if (id) { preview.src = homeUrl(id); preview.alt = name; }
+      preview.style.display = 'inline-block';
+      input.value = name;
+    } else {
+      preview.src = '';
+      preview.style.display = 'none';
+      input.value = '';
+    }
+  }
+
+  function openEditOppDeckModal(deckName) {
+    const sprites = oppDecks[deckName] || [];
+    document.getElementById('edit-opp-deck-original-name').value = deckName;
+    document.getElementById('edit-opp-deck-name').value = deckName;
+    editOppDeckSprites[0] = sprites[0] || null;
+    editOppDeckSprites[1] = sprites[1] || null;
+    updateEditOppDeckSpritePreview(0);
+    updateEditOppDeckSpritePreview(1);
+    document.getElementById('edit-opp-deck-modal').classList.remove('hidden');
+  }
+
+  function closeEditOppDeckModal() {
+    document.getElementById('edit-opp-deck-modal').classList.add('hidden');
+  }
+
+  document.getElementById('edit-opp-deck-close').addEventListener('click', closeEditOppDeckModal);
+  document.getElementById('edit-opp-deck-cancel').addEventListener('click', closeEditOppDeckModal);
+  document.getElementById('edit-opp-deck-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('edit-opp-deck-modal')) closeEditOppDeckModal();
+  });
+
+  document.getElementById('edit-opp-pick-sprite-1-btn').addEventListener('click', () => {
+    openPicker(editOppDeckSprites[0] ? [editOppDeckSprites[0]] : [], sprites => {
+      editOppDeckSprites[0] = sprites[0] || null;
+      editOppDeckSprites[1] = sprites[1] || editOppDeckSprites[1] || null;
+      updateEditOppDeckSpritePreview(0);
+      if (sprites[1] !== undefined) updateEditOppDeckSpritePreview(1);
+    });
+  });
+
+  document.getElementById('edit-opp-pick-sprite-2-btn').addEventListener('click', () => {
+    openPicker(editOppDeckSprites[1] ? [editOppDeckSprites[1]] : [], sprites => {
+      editOppDeckSprites[1] = sprites[0] || null;
+      updateEditOppDeckSpritePreview(1);
+    });
+  });
+
+  document.getElementById('edit-opp-deck-save').addEventListener('click', () => {
+    const originalName = document.getElementById('edit-opp-deck-original-name').value;
+    const newName      = document.getElementById('edit-opp-deck-name').value.trim();
+    if (!newName) { alert('Deck name cannot be empty.'); return; }
+    const sprites = editOppDeckSprites.filter(Boolean);
+    // If name changed, migrate oppDecks key and match history
+    if (newName !== originalName) {
+      delete oppDecks[originalName];
+      matches = matches.map(m => m.oppDeck === originalName ? { ...m, oppDeck: newName } : m);
+      save(KEYS.matches, matches);
+    }
+    oppDecks[newName] = sprites;
+    save(KEYS.oppDecks, oppDecks);
+    closeEditOppDeckModal();
+    renderOppDecks();
+    populateOppDeckSelects();
+    renderHistory();
+    renderStats();
+  });
+
+  // ────────────────────────────────────────────────────────────
+  // EDIT MATCH MODAL
+  // ────────────────────────────────────────────────────────────
+  function openEditMatchModal(matchId) {
+    const m = matches.find(x => x.id === matchId);
+    if (!m) return;
+
+    // Populate your deck select
+    const myDeckSel = document.getElementById('edit-my-deck');
+    const allNames = new Set([...decks.map(d => d.name), ...matches.map(x => x.myDeck)]);
+    myDeckSel.innerHTML = '<option value="" disabled selected>— select your deck —</option>';
+    [...allNames].sort().forEach(d => {
+      myDeckSel.insertAdjacentHTML('beforeend', `<option value="${esc(d)}">${esc(d)}</option>`);
+    });
+
+    // Populate opp deck select
+    populateOppDeckSelects();
+
+    document.getElementById('edit-match-id').value     = m.id;
+    myDeckSel.value                                     = m.myDeck;
+    document.getElementById('edit-event-type').value   = m.event;
+    document.getElementById('edit-match-date').value   = m.date;
+    document.getElementById('edit-match-notes').value  = m.notes || '';
+
+    // Set opp deck
+    const oppSel   = document.getElementById('edit-opp-deck-select');
+    const newWrap  = document.getElementById('edit-opp-new-deck-wrap');
+    const hiddenIn = document.getElementById('edit-opp-deck');
+    const knownNames = getAllOppDeckNames();
+    if (knownNames.includes(m.oppDeck)) {
+      oppSel.value = m.oppDeck;
+      newWrap.classList.add('hidden');
+    } else {
+      oppSel.value = '__new__';
+      newWrap.classList.remove('hidden');
+      document.getElementById('edit-opp-deck-new-input').value = m.oppDeck;
+    }
+    hiddenIn.value = m.oppDeck;
+
+    // Set result
+    const editResultInput = document.getElementById('edit-result-input');
+    editResultInput.value = m.result;
+    document.querySelectorAll('.edit-result-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.result === m.result);
+    });
+
+    document.getElementById('edit-match-modal').classList.remove('hidden');
+  }
+
+  function closeEditMatchModal() {
+    document.getElementById('edit-match-modal').classList.add('hidden');
+  }
+
+  document.getElementById('edit-match-close').addEventListener('click', closeEditMatchModal);
+  document.getElementById('edit-match-cancel').addEventListener('click', closeEditMatchModal);
+  document.getElementById('edit-match-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('edit-match-modal')) closeEditMatchModal();
+  });
+
+  // Edit match result buttons
+  document.querySelectorAll('.edit-result-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.edit-result-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('edit-result-input').value = btn.dataset.result;
+    });
+  });
+
+  document.getElementById('edit-match-save').addEventListener('click', () => {
+    const id      = Number(document.getElementById('edit-match-id').value);
+    const myDeck  = document.getElementById('edit-my-deck').value;
+    const oppDeck = document.getElementById('edit-opp-deck').value.trim();
+    const result  = document.getElementById('edit-result-input').value;
+    const event   = document.getElementById('edit-event-type').value;
+    const date    = document.getElementById('edit-match-date').value;
+    const notes   = document.getElementById('edit-match-notes').value.trim();
+
+    if (!myDeck)  { alert('Please select your deck.'); return; }
+    if (!oppDeck) { alert('Please select an opponent deck or enter a new deck name.'); return; }
+    if (!result)  { alert('Please select a result.'); return; }
+    if (!event)   { alert('Please select an event.'); return; }
+    if (!date)    { alert('Please enter a date.'); return; }
+
+    const idx = matches.findIndex(m => m.id === id);
+    if (idx === -1) return;
+    matches[idx] = { id, myDeck, oppDeck, result, event, date, notes };
+    save(KEYS.matches, matches);
+    closeEditMatchModal();
+    populateDeckSelects();
+    renderHistory();
+    renderStats();
+  });
 
   // ────────────────────────────────────────────────────────────
   // INIT
