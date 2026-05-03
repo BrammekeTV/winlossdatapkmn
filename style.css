@@ -549,3 +549,22 @@ textarea { resize: vertical; }
   color: var(--text-muted);
   padding: .5rem;
 }
+
+/* ── Pokémon HOME sprite images ──────────────────────────────── */
+.pkmn-sprite {
+  width: 32px;
+  height: 32px;
+  vertical-align: middle;
+  object-fit: contain;
+}
+.sprite-cell img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+.picker-chip img {
+  width: 32px;
+  height: 32px;
+  vertical-align: middle;
+  object-fit: contain;
+}
