@@ -267,3 +267,39 @@ textarea { resize: vertical; }
   .stats-summary { gap: .6rem; }
   .stat-chip .chip-val { font-size: 1.4rem; }
 }
+
+/* ── Sprite inputs (add-deck form) ───────────────────────────── */
+.sprite-inputs {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+.sprite-input-group {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.sprite-input-group label {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ── Deck sprite preview (under "Your Deck" select) ──────────── */
+.deck-sprite-preview {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  min-height: 40px;
+  margin-top: .3rem;
+}
+
+/* ── Sprite column in tables ─────────────────────────────────── */
+.sprite-col {
+  white-space: nowrap;
+  vertical-align: middle;
+  width: 1%;
+}

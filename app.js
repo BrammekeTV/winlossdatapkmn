@@ -17,6 +17,9 @@
   let decks   = load(KEYS.decks);
   let matches = load(KEYS.matches);
 
+  // Migrate old string-based decks to objects
+  decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [] } : d);
+
   // ── Tab navigation ───────────────────────────────────────────
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -41,15 +44,37 @@
     e.preventDefault();
     const name = newDeckInput.value.trim();
     if (!name) return;
-    if (decks.includes(name)) {
+    if (decks.some(d => d.name === name)) {
       alert(`"${name}" already exists.`);
       return;
     }
-    decks.push(name);
+    const sprite1 = document.getElementById('new-sprite-1').value.trim();
+    const sprite2 = document.getElementById('new-sprite-2').value.trim();
+    const sprites = [sprite1, sprite2].filter(Boolean);
+    decks.push({ name, sprites });
     save(KEYS.decks, decks);
     newDeckInput.value = '';
+    document.getElementById('new-sprite-1').value = '';
+    document.getElementById('new-sprite-2').value = '';
+    document.getElementById('sprite-preview-1').style.display = 'none';
+    document.getElementById('sprite-preview-2').style.display = 'none';
     renderDecks();
     populateDeckSelects();
+  });
+
+  // Live sprite previews for sprite inputs
+  ['new-sprite-1', 'new-sprite-2'].forEach((id, i) => {
+    document.getElementById(id).addEventListener('input', function () {
+      const preview = document.getElementById(`sprite-preview-${i + 1}`);
+      const slug = spriteSlug(this.value.trim());
+      if (slug) {
+        preview.className = `pokesprite pokemon ${slug}`;
+        preview.style.display = 'inline-block';
+      } else {
+        preview.className = 'pokesprite pokemon';
+        preview.style.display = 'none';
+      }
+    });
   });
 
   function renderDecks() {
@@ -57,13 +82,17 @@
     noDecksEl.classList.toggle('hidden', decks.length > 0);
     decks.forEach(deck => {
       const li = document.createElement('li');
-      li.textContent = deck;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'deck-name-label';
+      const sprites = deckSpritesHtml(deck.name);
+      nameSpan.innerHTML = (sprites ? sprites + ' ' : '') + esc(deck.name);
+      li.appendChild(nameSpan);
       const del = document.createElement('button');
       del.className = 'btn-delete';
       del.textContent = 'Remove';
       del.addEventListener('click', () => {
-        if (!confirm(`Remove "${deck}"? This won't delete match history for this deck.`)) return;
-        decks = decks.filter(d => d !== deck);
+        if (!confirm(`Remove "${deck.name}"? This won't delete match history for this deck.`)) return;
+        decks = decks.filter(d => d.name !== deck.name);
         save(KEYS.decks, decks);
         renderDecks();
         populateDeckSelects();
@@ -87,7 +116,7 @@
     historyDeckSel.innerHTML = '<option value="all">All Decks</option>';
 
     // Also collect decks used in matches but not in managed list
-    const allDeckNames = new Set([...decks, ...matches.map(m => m.myDeck)]);
+    const allDeckNames = new Set([...decks.map(d => d.name), ...matches.map(m => m.myDeck)]);
     [...allDeckNames].sort().forEach(d => {
       myDeckSel.insertAdjacentHTML('beforeend', `<option value="${esc(d)}">${esc(d)}</option>`);
       historyDeckSel.insertAdjacentHTML('beforeend', `<option value="${esc(d)}">${esc(d)}</option>`);
@@ -95,6 +124,8 @@
 
     if (savedMyDeck) myDeckSel.value = savedMyDeck;
     if (savedHistoryDeck) historyDeckSel.value = savedHistoryDeck;
+
+    updateMyDeckSpritePreview();
   }
 
   // ────────────────────────────────────────────────────────────
@@ -103,6 +134,15 @@
   const logForm      = document.getElementById('log-form');
   const resultInput  = document.getElementById('result-input');
   const logSuccess   = document.getElementById('log-success');
+
+  function updateMyDeckSpritePreview() {
+    const myDeckSel = document.getElementById('my-deck');
+    const preview   = document.getElementById('my-deck-sprite-preview');
+    if (!preview) return;
+    preview.innerHTML = deckSpritesHtml(myDeckSel.value);
+  }
+
+  document.getElementById('my-deck').addEventListener('change', updateMyDeckSpritePreview);
 
   // Default date to today
   document.getElementById('match-date').valueAsDate = new Date();
@@ -140,6 +180,7 @@
     setTimeout(() => logSuccess.classList.add('hidden'), 2500);
 
     populateDeckSelects();
+    updateMyDeckSpritePreview();
   });
 
   // ────────────────────────────────────────────────────────────
@@ -194,6 +235,7 @@
 
     statsBody.innerHTML = rows.map(r => `
       <tr>
+        <td class="sprite-col">${deckSpritesHtml(r.deck)}</td>
         <td><strong>${esc(r.deck)}</strong></td>
         <td>${r.total}</td>
         <td>${r.wins}</td>
@@ -253,9 +295,14 @@
       tr.appendChild(td(dateStr));
 
       const deckCell = document.createElement('td');
-      const strong   = document.createElement('strong');
-      strong.textContent = m.myDeck;
-      deckCell.appendChild(strong);
+      const spritesHtml = deckSpritesHtml(m.myDeck);
+      if (spritesHtml) {
+        deckCell.innerHTML = spritesHtml + ' <strong>' + esc(m.myDeck) + '</strong>';
+      } else {
+        const strong = document.createElement('strong');
+        strong.textContent = m.myDeck;
+        deckCell.appendChild(strong);
+      }
       tr.appendChild(deckCell);
 
       tr.appendChild(td(m.oppDeck));
@@ -303,6 +350,21 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // Sprite helpers
+  // ────────────────────────────────────────────────────────────
+  function spriteSlug(s) {
+    return s.toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[-\s](?:ex|v|vmax|vstar|gx)$/i, '');
+  }
+
+  function deckSpritesHtml(deckName) {
+    const deck = decks.find(d => d.name === deckName);
+    if (!deck || !deck.sprites || !deck.sprites.length) return '';
+    return deck.sprites.map(s => `<span class="pokesprite pokemon ${esc(spriteSlug(s))}"></span>`).join(' ');
   }
 
   // ────────────────────────────────────────────────────────────
