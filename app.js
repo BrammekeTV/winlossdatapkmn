@@ -170,7 +170,8 @@
     const deckMap = {};
     filtered.forEach(m => {
       if (!deckMap[m.myDeck]) deckMap[m.myDeck] = { wins: 0, losses: 0, ties: 0 };
-      deckMap[m.myDeck][m.result.toLowerCase() + 's']++;
+      const key = { Win: 'wins', Loss: 'losses', Tie: 'ties' }[m.result];
+      if (key) deckMap[m.myDeck][key]++;
     });
 
     const statsBody = document.getElementById('stats-body');
