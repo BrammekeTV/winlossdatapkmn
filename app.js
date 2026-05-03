@@ -346,25 +346,34 @@
 
   document.getElementById('my-deck').addEventListener('change', updateMyDeckSpritePreview);
 
-  // Opp deck select change
-  document.getElementById('opp-deck-select').addEventListener('change', function () {
-    const newWrap   = document.getElementById('opp-new-deck-wrap');
-    const hiddenIn  = document.getElementById('opp-deck');
-    if (this.value === '__new__') {
-      newWrap.classList.remove('hidden');
-      hiddenIn.value = document.getElementById('opp-deck-new-input').value.trim();
-    } else {
-      newWrap.classList.add('hidden');
-      hiddenIn.value = this.value;
-    }
-    updateOppDeckSpritePreview();
-  });
+  // ── Shared helper: wire up opp-deck select + new-input → hidden input sync ──
+  function setupOppDeckSelectHandlers(selectId, newWrapId, newInputId, hiddenId, onChangeCb) {
+    document.getElementById(selectId).addEventListener('change', function () {
+      const newWrap  = document.getElementById(newWrapId);
+      const hiddenIn = document.getElementById(hiddenId);
+      if (this.value === '__new__') {
+        newWrap.classList.remove('hidden');
+        hiddenIn.value = document.getElementById(newInputId).value.trim();
+      } else {
+        newWrap.classList.add('hidden');
+        hiddenIn.value = this.value;
+      }
+      if (onChangeCb) onChangeCb();
+    });
+    document.getElementById(newInputId).addEventListener('input', function () {
+      document.getElementById(hiddenId).value = this.value.trim();
+      if (onChangeCb) onChangeCb();
+    });
+  }
 
-  // Opp deck new name input
-  document.getElementById('opp-deck-new-input').addEventListener('input', function () {
-    document.getElementById('opp-deck').value = this.value.trim();
-    updateOppDeckSpritePreview();
-  });
+  setupOppDeckSelectHandlers(
+    'opp-deck-select', 'opp-new-deck-wrap', 'opp-deck-new-input', 'opp-deck',
+    updateOppDeckSpritePreview
+  );
+  setupOppDeckSelectHandlers(
+    'edit-opp-deck-select', 'edit-opp-new-deck-wrap', 'edit-opp-deck-new-input', 'edit-opp-deck',
+    null
+  );
 
   // Opponent sprite picker
   document.getElementById('pick-opp-sprite-btn').addEventListener('click', () => {
@@ -404,7 +413,7 @@
     const date    = document.getElementById('match-date').value;
     const notes   = document.getElementById('match-notes').value.trim();
 
-    if (!oppDeck) { alert('Please select or enter an opponent deck.'); return; }
+    if (!oppDeck) { alert('Please select an opponent deck or enter a new deck name.'); return; }
     if (!result) { alert('Please select Win, Loss, or Tie.'); return; }
 
     matches.push({ id: Date.now(), myDeck, oppDeck, result, event, date, notes });
@@ -1072,23 +1081,6 @@
     });
   });
 
-  // Edit match opp deck select
-  document.getElementById('edit-opp-deck-select').addEventListener('change', function () {
-    const newWrap  = document.getElementById('edit-opp-new-deck-wrap');
-    const hiddenIn = document.getElementById('edit-opp-deck');
-    if (this.value === '__new__') {
-      newWrap.classList.remove('hidden');
-      hiddenIn.value = document.getElementById('edit-opp-deck-new-input').value.trim();
-    } else {
-      newWrap.classList.add('hidden');
-      hiddenIn.value = this.value;
-    }
-  });
-
-  document.getElementById('edit-opp-deck-new-input').addEventListener('input', function () {
-    document.getElementById('edit-opp-deck').value = this.value.trim();
-  });
-
   document.getElementById('edit-match-save').addEventListener('click', () => {
     const id      = Number(document.getElementById('edit-match-id').value);
     const myDeck  = document.getElementById('edit-my-deck').value;
@@ -1099,7 +1091,7 @@
     const notes   = document.getElementById('edit-match-notes').value.trim();
 
     if (!myDeck)  { alert('Please select your deck.'); return; }
-    if (!oppDeck) { alert('Please select or enter an opponent deck.'); return; }
+    if (!oppDeck) { alert('Please select an opponent deck or enter a new deck name.'); return; }
     if (!result)  { alert('Please select a result.'); return; }
     if (!event)   { alert('Please select an event.'); return; }
     if (!date)    { alert('Please enter a date.'); return; }
