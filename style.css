@@ -475,6 +475,9 @@ textarea { resize: vertical; }
   z-index: 1000;
   padding: 1rem;
 }
+
+/* Sprite picker must sit above any other open modal */
+#sprite-picker-modal { z-index: 1100; }
 .modal-box {
   background: var(--surface);
   border-radius: var(--radius);
