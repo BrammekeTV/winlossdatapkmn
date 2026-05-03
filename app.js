@@ -358,13 +358,14 @@
   function spriteSlug(s) {
     return s.toLowerCase()
       .replace(/\s+/g, '-')
-      .replace(/[-\s](?:ex|v|vmax|vstar|gx)$/i, '');
+      .replace(/[-]+(?:ex|v|vmax|vstar|gx)$/i, '')
+      .replace(/[^a-z0-9-]/g, '');
   }
 
   function deckSpritesHtml(deckName) {
     const deck = decks.find(d => d.name === deckName);
     if (!deck || !deck.sprites || !deck.sprites.length) return '';
-    return deck.sprites.map(s => `<span class="pokesprite pokemon ${esc(spriteSlug(s))}"></span>`).join(' ');
+    return deck.sprites.map(s => `<span class="pokesprite pokemon ${spriteSlug(s)}"></span>`).join(' ');
   }
 
   // ────────────────────────────────────────────────────────────
