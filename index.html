@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon TCG Win/Loss Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <span class="logo">⚡</span>
+      <h1>Pokémon TCG Tracker</h1>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="log">📝 Log Match</button>
+    <button class="tab-btn" data-tab="decks">🃏 Decks</button>
+    <button class="tab-btn" data-tab="stats">📊 Stats</button>
+    <button class="tab-btn" data-tab="history">📋 History</button>
+  </nav>
+
+  <main>
+    <!-- LOG MATCH TAB -->
+    <section id="tab-log" class="tab-content active">
+      <div class="card">
+        <h2>Log a Match</h2>
+        <form id="log-form">
+          <div class="form-group">
+            <label for="my-deck">Your Deck</label>
+            <select id="my-deck" required>
+              <option value="" disabled selected>— select your deck —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="opp-deck">Opponent's Deck</label>
+            <input type="text" id="opp-deck" placeholder="e.g. Charizard ex" required autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label>Result</label>
+            <div class="result-buttons">
+              <button type="button" class="result-btn win" data-result="Win">✔ Win</button>
+              <button type="button" class="result-btn loss" data-result="Loss">✘ Loss</button>
+              <button type="button" class="result-btn tie" data-result="Tie">– Tie</button>
+            </div>
+            <input type="hidden" id="result-input" required />
+          </div>
+          <div class="form-group">
+            <label for="event-type">Event</label>
+            <select id="event-type" required>
+              <option value="" disabled selected>— select event —</option>
+              <option value="TCGLive">TCGLive</option>
+              <option value="Challenge">Challenge</option>
+              <option value="Cup">Cup</option>
+              <option value="Regional">Regional</option>
+              <option value="International">International</option>
+              <option value="Worlds">Worlds</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="match-date">Date</label>
+            <input type="date" id="match-date" required />
+          </div>
+          <div class="form-group">
+            <label for="match-notes">Notes <span class="optional">(optional)</span></label>
+            <textarea id="match-notes" rows="2" placeholder="Any notes about the match…"></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Log Match</button>
+        </form>
+        <p id="log-success" class="success-msg hidden">Match logged!</p>
+      </div>
+    </section>
+
+    <!-- DECKS TAB -->
+    <section id="tab-decks" class="tab-content">
+      <div class="card">
+        <h2>Manage Decks</h2>
+        <form id="add-deck-form">
+          <div class="form-group inline">
+            <input type="text" id="new-deck-name" placeholder="Deck name (e.g. Gardevoir ex)" autocomplete="off" required />
+            <button type="submit" class="btn-primary">Add Deck</button>
+          </div>
+        </form>
+        <ul id="deck-list" class="deck-list"></ul>
+        <p id="no-decks" class="empty-msg">No decks yet. Add your first deck above!</p>
+      </div>
+    </section>
+
+    <!-- STATS TAB -->
+    <section id="tab-stats" class="tab-content">
+      <div class="card">
+        <h2>Stats Overview</h2>
+        <div class="stats-filter form-group">
+          <label for="stats-event-filter">Filter by Event</label>
+          <select id="stats-event-filter">
+            <option value="all">All Events</option>
+            <option value="TCGLive">TCGLive</option>
+            <option value="Challenge">Challenge</option>
+            <option value="Cup">Cup</option>
+            <option value="Regional">Regional</option>
+            <option value="International">International</option>
+            <option value="Worlds">Worlds</option>
+          </select>
+        </div>
+        <div id="stats-summary" class="stats-summary"></div>
+        <table id="stats-table" class="data-table">
+          <thead>
+            <tr>
+              <th>Deck</th>
+              <th>Matches</th>
+              <th>Wins</th>
+              <th>Losses</th>
+              <th>Ties</th>
+              <th>Win %</th>
+            </tr>
+          </thead>
+          <tbody id="stats-body"></tbody>
+        </table>
+        <p id="no-stats" class="empty-msg hidden">No matches logged yet.</p>
+      </div>
+    </section>
+
+    <!-- HISTORY TAB -->
+    <section id="tab-history" class="tab-content">
+      <div class="card">
+        <h2>Match History</h2>
+        <div class="history-filters">
+          <div class="form-group">
+            <label for="history-deck-filter">Deck</label>
+            <select id="history-deck-filter">
+              <option value="all">All Decks</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="history-event-filter">Event</label>
+            <select id="history-event-filter">
+              <option value="all">All Events</option>
+              <option value="TCGLive">TCGLive</option>
+              <option value="Challenge">Challenge</option>
+              <option value="Cup">Cup</option>
+              <option value="Regional">Regional</option>
+              <option value="International">International</option>
+              <option value="Worlds">Worlds</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="history-result-filter">Result</label>
+            <select id="history-result-filter">
+              <option value="all">All Results</option>
+              <option value="Win">Win</option>
+              <option value="Loss">Loss</option>
+              <option value="Tie">Tie</option>
+            </select>
+          </div>
+        </div>
+        <table id="history-table" class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Your Deck</th>
+              <th>Opponent</th>
+              <th>Event</th>
+              <th>Result</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+        <p id="no-history" class="empty-msg">No matches logged yet.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
