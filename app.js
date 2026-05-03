@@ -235,33 +235,60 @@
     }
     noHistory.classList.add('hidden');
 
-    historyBody.innerHTML = filtered.map(m => {
-      const badgeCls = m.result.toLowerCase();
-      const dateStr  = m.date ? new Date(m.date + 'T00:00:00').toLocaleDateString() : '—';
-      return `
-        <tr>
-          <td>${esc(dateStr)}</td>
-          <td><strong>${esc(m.myDeck)}</strong></td>
-          <td>${esc(m.oppDeck)}</td>
-          <td>${esc(m.event)}</td>
-          <td><span class="badge ${badgeCls}">${esc(m.result)}</span></td>
-          <td class="notes-cell" title="${esc(m.notes || '')}">${esc(m.notes || '')}</td>
-          <td><button class="btn-delete" data-id="${m.id}">✕</button></td>
-        </tr>
-      `;
-    }).join('');
+    const VALID_RESULT_CLS = { Win: 'win', Loss: 'loss', Tie: 'tie' };
 
-    // Delete buttons
-    historyBody.querySelectorAll('.btn-delete').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = Number(btn.dataset.id);
+    historyBody.innerHTML = '';
+    filtered.forEach(m => {
+      const dateStr = m.date ? new Date(m.date + 'T00:00:00').toLocaleDateString() : '—';
+
+      const tr = document.createElement('tr');
+
+      function td(text) {
+        const cell = document.createElement('td');
+        cell.textContent = text;
+        return cell;
+      }
+
+      tr.appendChild(td(dateStr));
+
+      const deckCell = document.createElement('td');
+      const strong   = document.createElement('strong');
+      strong.textContent = m.myDeck;
+      deckCell.appendChild(strong);
+      tr.appendChild(deckCell);
+
+      tr.appendChild(td(m.oppDeck));
+      tr.appendChild(td(m.event));
+
+      const resultCell = document.createElement('td');
+      const badge      = document.createElement('span');
+      badge.className  = 'badge ' + (VALID_RESULT_CLS[m.result] || 'tie');
+      badge.textContent = m.result;
+      resultCell.appendChild(badge);
+      tr.appendChild(resultCell);
+
+      const notesCell = document.createElement('td');
+      notesCell.className   = 'notes-cell';
+      notesCell.title       = m.notes || '';
+      notesCell.textContent = m.notes || '';
+      tr.appendChild(notesCell);
+
+      const delCell = document.createElement('td');
+      const delBtn  = document.createElement('button');
+      delBtn.className  = 'btn-delete';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => {
         if (!confirm('Delete this match?')) return;
-        matches = matches.filter(m => m.id !== id);
+        matches = matches.filter(n => n.id !== m.id);
         save(KEYS.matches, matches);
         populateDeckSelects();
         renderHistory();
         renderStats();
       });
+      delCell.appendChild(delBtn);
+      tr.appendChild(delCell);
+
+      historyBody.appendChild(tr);
     });
   }
 
