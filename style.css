@@ -598,6 +598,53 @@ textarea { resize: vertical; }
   padding: .5rem;
 }
 
+/* ── Danger button ───────────────────────────────────────────── */
+.btn-danger {
+  padding: .6rem 1.2rem;
+  background: none;
+  border: 1.5px solid var(--loss);
+  color: var(--loss);
+  border-radius: 7px;
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.btn-danger:hover { background: var(--loss); color: #fff; }
+
+/* ── Data management tab ─────────────────────────────────────── */
+.data-desc {
+  font-size: .9rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+.clear-actions {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.import-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.import-file-label {
+  cursor: pointer;
+  display: inline-block;
+  white-space: nowrap;
+}
+.import-file-name {
+  font-size: .88rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+.error-msg { color: var(--loss); font-weight: 600; margin-top: .75rem; }
+
 /* ── Pokémon HOME sprite images ──────────────────────────────── */
 .pkmn-sprite {
   width: 32px;
