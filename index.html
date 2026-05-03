@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pokémon TCG Win/Loss Tracker</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pokesprite-spritesheet@latest/pokesprite-pokemon-gen8.css" />
 </head>
 <body>
   <header>
@@ -32,6 +33,7 @@
             <select id="my-deck" required>
               <option value="" disabled selected>— select your deck —</option>
             </select>
+            <div id="my-deck-sprite-preview" class="deck-sprite-preview"></div>
           </div>
           <div class="form-group">
             <label for="opp-deck">Opponent's Deck</label>
@@ -81,6 +83,18 @@
             <input type="text" id="new-deck-name" placeholder="Deck name (e.g. Gardevoir ex)" autocomplete="off" required />
             <button type="submit" class="btn-primary">Add Deck</button>
           </div>
+          <div class="sprite-inputs">
+            <div class="sprite-input-group">
+              <label for="new-sprite-1">Sprite 1 <span class="optional">(optional)</span></label>
+              <input type="text" id="new-sprite-1" placeholder="e.g. gardevoir" autocomplete="off" />
+              <span class="pokesprite pokemon" id="sprite-preview-1" style="display:none"></span>
+            </div>
+            <div class="sprite-input-group">
+              <label for="new-sprite-2">Sprite 2 <span class="optional">(optional)</span></label>
+              <input type="text" id="new-sprite-2" placeholder="e.g. zacian" autocomplete="off" />
+              <span class="pokesprite pokemon" id="sprite-preview-2" style="display:none"></span>
+            </div>
+          </div>
         </form>
         <ul id="deck-list" class="deck-list"></ul>
         <p id="no-decks" class="empty-msg">No decks yet. Add your first deck above!</p>
@@ -107,6 +121,7 @@
         <table id="stats-table" class="data-table">
           <thead>
             <tr>
+              <th class="sprite-col">Sprite(s)</th>
               <th>Deck</th>
               <th>Matches</th>
               <th>Wins</th>
