@@ -431,11 +431,8 @@
   document.getElementById('pick-opp-sprite-btn').addEventListener('click', () => {
     const name = document.getElementById('opp-deck').value.trim();
     if (!name) { alert('Please select or enter the opponent\'s deck name first.'); return; }
-    const deckData = oppDecks[name] || { sprites: [], archetype: '' };
-    const current  = Array.isArray(deckData) ? deckData : (deckData.sprites || []);
+    const { sprites: current, archetype: arch } = getOppDeckData(name);
     openPicker(current, sprites => {
-      const existing = oppDecks[name];
-      const arch = existing && !Array.isArray(existing) ? (existing.archetype || '') : '';
       oppDecks[name] = { sprites, archetype: arch };
       if (!sprites.length) delete oppDecks[name];
       save(KEYS.oppDecks, oppDecks);
@@ -700,8 +697,11 @@
     if (statsView === 'archetypes') {
       const archetypeMap = {};
       oppRows.forEach(r => {
-        const key = r.archetype || r.opp;
-        if (!archetypeMap[key]) archetypeMap[key] = { wins: 0, losses: 0, ties: 0, spriteUrl: null, label: key };
+        // Use archetype when set; fall back to a namespaced key so a deck named "X"
+        // doesn't collide with an archetype also named "X".
+        const key   = r.archetype ? r.archetype : '\x00' + r.opp;
+        const label = r.archetype || r.opp;
+        if (!archetypeMap[key]) archetypeMap[key] = { wins: 0, losses: 0, ties: 0, spriteUrl: null, label };
         archetypeMap[key].wins   += r.wins;
         archetypeMap[key].losses += r.losses;
         archetypeMap[key].ties   += r.ties;
@@ -729,7 +729,12 @@
         archetypeGroups[key].push(r);
       });
 
-      Object.entries(archetypeGroups).sort((a, b) => a[0].localeCompare(b[0])).forEach(([archKey, rows]) => {
+      // Sort: named archetypes first, "No archetype" last
+      Object.entries(archetypeGroups).sort((a, b) => {
+        if (a[0] === '— No archetype —') return 1;
+        if (b[0] === '— No archetype —') return -1;
+        return a[0].localeCompare(b[0]);
+      }).forEach(([archKey, rows]) => {
         const archWins   = rows.reduce((s, r) => s + r.wins,   0);
         const archLosses = rows.reduce((s, r) => s + r.losses, 0);
         const archTies   = rows.reduce((s, r) => s + r.ties,   0);
@@ -923,28 +928,29 @@
 
   function oppSpritesHtml(deckName) {
     if (!deckName) return '';
-    const deck = oppDecks[deckName];
-    if (!deck) return '';
-    const sprites = Array.isArray(deck) ? deck : (deck.sprites || []);
+    const { sprites } = getOppDeckData(deckName);
     if (!sprites.length) return '';
     return sprites.map(s => spriteImg(s)).join(' ');
   }
 
   function getOppDeckArchetype(deckName) {
     if (!deckName) return '';
-    const deck = oppDecks[deckName];
-    if (!deck || Array.isArray(deck)) return '';
-    return deck.archetype || '';
+    return getOppDeckData(deckName).archetype;
   }
 
   function getOppSpriteUrl(deckName) {
     if (!deckName) return null;
-    const deck = oppDecks[deckName];
-    if (!deck) return null;
-    const sprites = Array.isArray(deck) ? deck : (deck.sprites || []);
+    const { sprites } = getOppDeckData(deckName);
     if (!sprites.length) return null;
     const sid = spriteIdFromName(sprites[0]);
     return sid ? homeUrl(sid) : null;
+  }
+
+  function getOppDeckData(deckName) {
+    const deck = oppDecks[deckName];
+    if (!deck) return { sprites: [], archetype: '' };
+    if (Array.isArray(deck)) return { sprites: deck, archetype: '' };
+    return { sprites: deck.sprites || [], archetype: deck.archetype || '' };
   }
 
   // ────────────────────────────────────────────────────────────
@@ -990,10 +996,10 @@
     if (!name) return;
     const sprites   = pendingOppSprites.filter(Boolean);
     const archetype = document.getElementById('new-opp-deck-archetype').value.trim();
-    const existing  = oppDecks[name];
+    const existing  = getOppDeckData(name);
     oppDecks[name] = {
-      sprites:   sprites.length ? sprites : (existing && !Array.isArray(existing) ? (existing.sprites || []) : []),
-      archetype: archetype !== '' ? archetype : (existing && !Array.isArray(existing) ? (existing.archetype || '') : '')
+      sprites:   sprites.length ? sprites : existing.sprites,
+      archetype: archetype !== '' ? archetype : existing.archetype
     };
     save(KEYS.oppDecks, oppDecks);
     document.getElementById('new-opp-deck-name').value = '';
@@ -1177,9 +1183,7 @@
   }
 
   function openEditOppDeckModal(deckName) {
-    const deckData = oppDecks[deckName] || { sprites: [], archetype: '' };
-    const sprites  = Array.isArray(deckData) ? deckData : (deckData.sprites || []);
-    const archetype = Array.isArray(deckData) ? '' : (deckData.archetype || '');
+    const { sprites, archetype } = getOppDeckData(deckName);
     document.getElementById('edit-opp-deck-original-name').value = deckName;
     document.getElementById('edit-opp-deck-name').value = deckName;
     document.getElementById('edit-opp-deck-archetype').value = archetype;
