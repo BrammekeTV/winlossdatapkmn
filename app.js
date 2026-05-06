@@ -26,6 +26,15 @@
   // Migrate old string-based decks to objects
   decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '' } : { ...d, archetype: d.archetype || '' });
 
+  // Migrate oppDecks from { name: string[] } to { name: { sprites: string[], archetype: string } }
+  Object.keys(oppDecks).forEach(name => {
+    if (Array.isArray(oppDecks[name])) {
+      oppDecks[name] = { sprites: oppDecks[name], archetype: '' };
+    } else if (oppDecks[name] && typeof oppDecks[name] === 'object') {
+      oppDecks[name] = { sprites: oppDecks[name].sprites || [], archetype: oppDecks[name].archetype || '' };
+    }
+  });
+
   // ── Stats view state ─────────────────────────────────────────
   let statsView = 'decks'; // 'decks' | 'archetypes'
 
@@ -311,6 +320,19 @@
 
     updateMyDeckSpritePreview();
     populateOppDeckSelects();
+    populateStatsDeckFilter();
+  }
+
+  function populateStatsDeckFilter() {
+    const sel = document.getElementById('stats-deck-filter');
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="all">All Decks</option>';
+    const allDeckNames = new Set([...decks.map(d => d.name), ...matches.map(m => m.myDeck)]);
+    [...allDeckNames].sort().forEach(d => {
+      sel.insertAdjacentHTML('beforeend', `<option value="${esc(d)}">${esc(d)}</option>`);
+    });
+    if (cur && cur !== 'all') sel.value = cur;
   }
 
   function populateOppDeckSelects() {
@@ -409,13 +431,13 @@
   document.getElementById('pick-opp-sprite-btn').addEventListener('click', () => {
     const name = document.getElementById('opp-deck').value.trim();
     if (!name) { alert('Please select or enter the opponent\'s deck name first.'); return; }
-    const current = oppDecks[name] || [];
+    const deckData = oppDecks[name] || { sprites: [], archetype: '' };
+    const current  = Array.isArray(deckData) ? deckData : (deckData.sprites || []);
     openPicker(current, sprites => {
-      if (sprites.length) {
-        oppDecks[name] = sprites;
-      } else {
-        delete oppDecks[name];
-      }
+      const existing = oppDecks[name];
+      const arch = existing && !Array.isArray(existing) ? (existing.archetype || '') : '';
+      oppDecks[name] = { sprites, archetype: arch };
+      if (!sprites.length) delete oppDecks[name];
       save(KEYS.oppDecks, oppDecks);
       updateOppDeckSpritePreview();
       populateOppDeckSelects();
@@ -466,10 +488,12 @@
   });
 
   // ────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // STATS + CHARTS
   // ────────────────────────────────────────────────────────────
   const statsEventFilter = document.getElementById('stats-event-filter');
   statsEventFilter.addEventListener('change', renderStats);
+  document.getElementById('stats-deck-filter').addEventListener('change', renderStats);
 
   // Stats view toggle (decks / archetypes)
   document.querySelectorAll('.stats-view-btn').forEach(btn => {
@@ -511,96 +535,24 @@
   });
 
   let overallChartInst = null;
-  const deckChartInsts = {};
 
-  // ── Sprite image cache for pie chart plugin ───────────────────
-  const _spriteImgCache = new Map();
-  function _getCachedImg(url, onLoad) {
-    if (_spriteImgCache.has(url)) return _spriteImgCache.get(url);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = onLoad;
-    img.src = url;
-    _spriteImgCache.set(url, img);
-    return img;
+  // ── Color helper for pie slices ───────────────────────────────
+  function _sliceColor(idx) {
+    return `hsl(${Math.round((idx * 137.508) % 360)}, 65%, 50%)`;
   }
 
-  // ── Custom Chart.js plugin: draw Pokémon sprites inside each deck slice ──
-  const spritePiePlugin = {
-    id: 'spritePie',
-    afterDraw(chart) {
-      const ctx       = chart.ctx;
-      const meta      = chart.getDatasetMeta(0);
-      const entries   = chart.data._deckEntries;
-      if (!entries) return;
-
-      const MIN_SLICE_ANGLE_FOR_SPRITE = 0.15;
-      const MAX_SPRITE_SIZE            = 28;
-      const SPRITE_SIZE_RATIO          = 0.7;
-
-      entries.forEach((entry, i) => {
-        const sliceWins = meta.data[2 * i];
-        const sliceLoss = meta.data[2 * i + 1];
-        if (!sliceWins || !sliceLoss) return;
-
-        // Mid-angle spanning both win+loss slices for this deck
-        const startAngle = sliceWins.startAngle;
-        const endAngle   = sliceLoss.endAngle;
-        const arcSpan    = endAngle - startAngle;
-        if (arcSpan < MIN_SLICE_ANGLE_FOR_SPRITE) return; // Skip too-small slices
-
-        const midAngle = (startAngle + endAngle) / 2;
-        const r        = (sliceWins.outerRadius + sliceWins.innerRadius) / 2;
-        const cx       = sliceWins.x + Math.cos(midAngle) * r;
-        const cy       = sliceWins.y + Math.sin(midAngle) * r;
-
-        const spriteUrl = entry.spriteUrl;
-        if (!spriteUrl) return;
-
-        const img = _getCachedImg(spriteUrl, () => { chart.draw(); });
-        if (!img.complete || img.naturalWidth === 0) return;
-
-        const size = Math.min(MAX_SPRITE_SIZE, arcSpan * r * SPRITE_SIZE_RATIO);
-        ctx.save();
-        ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
-        ctx.restore();
-      });
-    }
-  };
-  Chart.register(spritePiePlugin);
-
-  // ── Color helpers for deck slices ─────────────────────────────
-  function _deckHue(idx) {
-    return Math.round((idx * 137.508) % 360);
-  }
-  function _winColor(idx) {
-    return `hsl(${_deckHue(idx)}, 68%, 48%)`;
-  }
-  function _lossColor(idx) {
-    return `hsl(${_deckHue(idx)}, 28%, 68%)`;
-  }
-
-  // ── Render the deck-distribution pie with side legend ─────────
-  function renderDeckDistributionChart(deckEntries) {
+  // ── Render the opponent-deck distribution pie with side legend ─
+  function renderDeckDistributionChart(entries) {
     if (overallChartInst) { overallChartInst.destroy(); overallChartInst = null; }
 
     const chartWrap = document.getElementById('stats-chart-wrap');
-    if (!deckEntries.length) { chartWrap.classList.add('hidden'); return; }
+    if (!entries.length) { chartWrap.classList.add('hidden'); return; }
     chartWrap.classList.remove('hidden');
 
-    // Two slices per deck: wins + (losses+ties)
-    const labels  = [];
-    const data    = [];
-    const bgColors = [];
-    deckEntries.forEach((entry, i) => {
-      const nonWins = entry.losses + entry.ties;
-      labels.push(`${entry.label} – Wins`);
-      labels.push(`${entry.label} – Non-wins`);
-      data.push(entry.wins);
-      data.push(nonWins);
-      bgColors.push(_winColor(i));
-      bgColors.push(_lossColor(i));
-    });
+    const grandTotal = entries.reduce((s, e) => s + e.wins + e.losses + e.ties, 0);
+    const labels   = entries.map(e => e.label);
+    const data     = entries.map(e => e.wins + e.losses + e.ties);
+    const bgColors = entries.map((_, i) => _sliceColor(i));
 
     const canvas = document.getElementById('overall-pie');
     overallChartInst = new Chart(canvas, {
@@ -612,8 +564,7 @@
           backgroundColor: bgColors,
           borderWidth: 2,
           borderColor: '#ffffff'
-        }],
-        _deckEntries: deckEntries
+        }]
       },
       options: {
         responsive: false,
@@ -622,9 +573,9 @@
           tooltip: {
             callbacks: {
               label: ctx => {
-                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                const pct   = total ? Math.round((ctx.parsed / total) * 100) : 0;
-                return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                const pct = grandTotal ? Math.round((ctx.parsed / grandTotal) * 100) : 0;
+                const e   = entries[ctx.dataIndex];
+                return ` ${ctx.label}: ${ctx.parsed} matches (${pct}%) — ${e.wins}W / ${e.losses}L`;
               }
             }
           }
@@ -639,19 +590,18 @@
     leftEl.innerHTML  = '';
     rightEl.innerHTML = '';
 
-    const total = data.reduce((a, b) => a + b, 0);
-    const half  = Math.ceil(deckEntries.length / 2);
+    const half = Math.ceil(entries.length / 2);
 
-    deckEntries.forEach((entry, i) => {
+    entries.forEach((entry, i) => {
       const entryTotal = entry.wins + entry.losses + entry.ties;
-      const pct = total ? Math.round((entryTotal / total) * 100) : 0;
+      const pct = grandTotal ? Math.round((entryTotal / grandTotal) * 100) : 0;
 
       const item = document.createElement('div');
       item.className = 'deck-pie-legend-item';
 
       const colorDot = document.createElement('span');
       colorDot.className = 'deck-pie-legend-dot';
-      colorDot.style.background = _winColor(i);
+      colorDot.style.background = _sliceColor(i);
 
       const info = document.createElement('div');
       info.className = 'deck-pie-legend-info';
@@ -690,7 +640,10 @@
 
   function renderStats() {
     const eventFilter = statsEventFilter.value;
-    const filtered    = eventFilter === 'all' ? matches : matches.filter(m => m.event === eventFilter);
+    const deckFilter  = document.getElementById('stats-deck-filter').value;
+
+    let filtered = eventFilter === 'all' ? matches : matches.filter(m => m.event === eventFilter);
+    if (deckFilter !== 'all') filtered = filtered.filter(m => m.myDeck === deckFilter);
 
     const total  = filtered.length;
     const wins   = filtered.filter(m => m.result === 'Win').length;
@@ -710,25 +663,20 @@
     const archetypeColHeader = document.getElementById('stats-archetype-col');
     if (archetypeColHeader) archetypeColHeader.style.display = statsView === 'decks' ? '' : 'none';
 
-    // Build per-deck stats
-    const deckMap = {};
+    // Build per-opponent-deck stats
+    const oppMap = {};
     filtered.forEach(m => {
-      if (!deckMap[m.myDeck]) deckMap[m.myDeck] = { wins: 0, losses: 0, ties: 0, opponents: {} };
+      const opp = m.oppDeck;
+      if (!opp) return;
+      if (!oppMap[opp]) oppMap[opp] = { wins: 0, losses: 0, ties: 0 };
       const key = { Win: 'wins', Loss: 'losses', Tie: 'ties' }[m.result];
-      if (key) deckMap[m.myDeck][key]++;
-      if (m.oppDeck) {
-        if (!deckMap[m.myDeck].opponents[m.oppDeck]) {
-          deckMap[m.myDeck].opponents[m.oppDeck] = { wins: 0, losses: 0, ties: 0 };
-        }
-        const oppKey = { Win: 'wins', Loss: 'losses', Tie: 'ties' }[m.result];
-        if (oppKey) deckMap[m.myDeck].opponents[m.oppDeck][oppKey]++;
-      }
+      if (key) oppMap[opp][key]++;
     });
 
     const statsBody = document.getElementById('stats-body');
     const noStats   = document.getElementById('no-stats');
 
-    if (Object.keys(deckMap).length === 0) {
+    if (Object.keys(oppMap).length === 0) {
       statsBody.innerHTML = '';
       noStats.classList.remove('hidden');
       document.getElementById('stats-chart-wrap').classList.add('hidden');
@@ -739,69 +687,49 @@
     }
     noStats.classList.add('hidden');
 
-    const deckRows = Object.entries(deckMap)
-      .map(([deck, s]) => {
+    const oppRows = Object.entries(oppMap)
+      .map(([opp, s]) => {
         const tot = s.wins + s.losses + s.ties;
         const wr  = tot ? Math.round((s.wins / tot) * 100) : 0;
-        const deckObj = decks.find(d => d.name === deck);
-        const archetype = deckObj ? (deckObj.archetype || '') : '';
-        return { deck, ...s, total: tot, wr, archetype, opponents: s.opponents };
+        return { opp, ...s, total: tot, wr, archetype: getOppDeckArchetype(opp) };
       })
-      .sort((a, b) => b.wr - a.wr || b.total - a.total);
+      .sort((a, b) => b.total - a.total);
 
-    // Build deck entries for the pie chart
+    // Build pie entries
     let pieEntries;
     if (statsView === 'archetypes') {
-      // Aggregate by archetype
       const archetypeMap = {};
-      deckRows.forEach(r => {
-        const key = r.archetype || r.deck;
+      oppRows.forEach(r => {
+        const key = r.archetype || r.opp;
         if (!archetypeMap[key]) archetypeMap[key] = { wins: 0, losses: 0, ties: 0, spriteUrl: null, label: key };
         archetypeMap[key].wins   += r.wins;
         archetypeMap[key].losses += r.losses;
         archetypeMap[key].ties   += r.ties;
-        // Use first sprite found for this archetype
-        if (!archetypeMap[key].spriteUrl) {
-          const deckObj = decks.find(d => d.name === r.deck);
-          if (deckObj && deckObj.sprites && deckObj.sprites[0]) {
-            const sid = spriteIdFromName(deckObj.sprites[0]);
-            if (sid) archetypeMap[key].spriteUrl = homeUrl(sid);
-          }
-        }
+        if (!archetypeMap[key].spriteUrl) archetypeMap[key].spriteUrl = getOppSpriteUrl(r.opp);
       });
       pieEntries = Object.values(archetypeMap)
         .sort((a, b) => (b.wins + b.losses + b.ties) - (a.wins + a.losses + a.ties));
     } else {
-      pieEntries = deckRows.map(r => {
-        const deckObj = decks.find(d => d.name === r.deck);
-        let spriteUrl = null;
-        if (deckObj && deckObj.sprites && deckObj.sprites[0]) {
-          const sid = spriteIdFromName(deckObj.sprites[0]);
-          if (sid) spriteUrl = homeUrl(sid);
-        }
-        return { label: r.deck, wins: r.wins, losses: r.losses, ties: r.ties, spriteUrl };
-      });
+      pieEntries = oppRows.map(r => ({
+        label: r.opp, wins: r.wins, losses: r.losses, ties: r.ties,
+        spriteUrl: getOppSpriteUrl(r.opp)
+      }));
     }
 
     renderDeckDistributionChart(pieEntries);
 
     // Render the stats table
     statsBody.innerHTML = '';
-    Object.values(deckChartInsts).forEach(c => c && c.destroy());
-    Object.keys(deckChartInsts).forEach(k => delete deckChartInsts[k]);
 
     if (statsView === 'archetypes') {
-      // Group rows by archetype
       const archetypeGroups = {};
-      deckRows.forEach(r => {
+      oppRows.forEach(r => {
         const key = r.archetype || '— No archetype —';
         if (!archetypeGroups[key]) archetypeGroups[key] = [];
         archetypeGroups[key].push(r);
       });
 
-      let globalIdx = 0;
       Object.entries(archetypeGroups).sort((a, b) => a[0].localeCompare(b[0])).forEach(([archKey, rows]) => {
-        // Archetype summary row
         const archWins   = rows.reduce((s, r) => s + r.wins,   0);
         const archLosses = rows.reduce((s, r) => s + r.losses, 0);
         const archTies   = rows.reduce((s, r) => s + r.ties,   0);
@@ -812,7 +740,8 @@
         archTr.className = 'archetype-row';
         archTr.innerHTML = `
           <td class="sprite-col"></td>
-          <td colspan="2"><strong class="archetype-label">🗂 ${esc(archKey)}</strong></td>
+          <td><strong class="archetype-label">🗂 ${esc(archKey)}</strong></td>
+          <td style="display:none"></td>
           <td>${archTotal}</td>
           <td>${archWins}</td>
           <td>${archLosses}</td>
@@ -823,24 +752,21 @@
               <div class="wr-track"><div class="wr-fill" style="width:${archWr}%"></div></div>
             </div>
           </td>
-          <td></td>
         `;
         statsBody.appendChild(archTr);
-
-        rows.forEach(r => appendDeckRow(r, globalIdx++, statsBody, 'indent'));
+        rows.forEach(r => appendOppRow(r, statsBody, 'indent'));
       });
     } else {
-      deckRows.forEach((r, idx) => appendDeckRow(r, idx, statsBody, ''));
+      oppRows.forEach(r => appendOppRow(r, statsBody, ''));
     }
   }
 
-  function appendDeckRow(r, idx, statsBody, extraClass) {
-    const colspan = statsView === 'archetypes' ? 8 : 9;
+  function appendOppRow(r, statsBody, extraClass) {
     const tr = document.createElement('tr');
     if (extraClass) tr.classList.add(extraClass);
     tr.innerHTML = `
-      <td class="sprite-col">${deckSpritesHtml(r.deck)}</td>
-      <td><strong>${esc(r.deck)}</strong></td>
+      <td class="sprite-col">${oppSpritesHtml(r.opp)}</td>
+      <td><strong>${esc(r.opp)}</strong></td>
       <td style="${statsView === 'archetypes' ? 'display:none' : ''}">${esc(r.archetype || '')}</td>
       <td>${r.total}</td>
       <td>${r.wins}</td>
@@ -852,94 +778,10 @@
           <div class="wr-track"><div class="wr-fill" style="width:${r.wr}%"></div></div>
         </div>
       </td>
-      <td>
-        <button type="button" class="btn-expand" data-deck="${esc(r.deck)}" aria-expanded="false">▶ Opponents</button>
-      </td>
     `;
     statsBody.appendChild(tr);
-
-    // Expandable opponent row
-    const oppTr = document.createElement('tr');
-    oppTr.className = 'opp-breakdown-row hidden';
-    oppTr.dataset.deck = r.deck;
-    const oppEntries = Object.entries(r.opponents)
-      .map(([opp, s]) => {
-        const t  = s.wins + s.losses + s.ties;
-        const wr = t ? Math.round((s.wins / t) * 100) : 0;
-        return { opp, ...s, total: t, wr };
-      })
-      .sort((a, b) => b.total - a.total);
-
-    const canvasId = `deck-pie-${idx}`;
-    oppTr.innerHTML = `
-      <td colspan="${colspan}" class="opp-breakdown-cell">
-        <div class="opp-breakdown-inner">
-          <div class="opp-breakdown-chart-wrap">
-            <canvas id="${canvasId}" width="180" height="180"></canvas>
-            <p class="chart-label">${esc(r.deck)}</p>
-          </div>
-          <table class="opp-table">
-            <thead>
-              <tr>
-                <th>Opponent Deck</th>
-                <th>W</th><th>L</th><th>T</th><th>Win%</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${oppEntries.map(o => `
-                <tr>
-                  <td>${oppSpritesHtml(o.opp) ? oppSpritesHtml(o.opp) + ' ' : ''}${esc(o.opp)}</td>
-                  <td class="opp-w">${o.wins}</td>
-                  <td class="opp-l">${o.losses}</td>
-                  <td class="opp-t">${o.ties}</td>
-                  <td>${o.wr}%</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </td>
-    `;
-    statsBody.appendChild(oppTr);
-
-    tr.querySelector('.btn-expand').addEventListener('click', function () {
-      const expanded = this.getAttribute('aria-expanded') === 'true';
-      this.setAttribute('aria-expanded', String(!expanded));
-      this.textContent = expanded ? '▶ Opponents' : '▼ Opponents';
-      oppTr.classList.toggle('hidden', expanded);
-      if (!expanded && !deckChartInsts[canvasId]) {
-        deckChartInsts[canvasId] = renderPieChart(canvasId, [r.wins, r.losses, r.ties], null, null);
-      }
-    });
   }
 
-  function renderPieChart(canvasId, data, existingInst, setInst) {
-    if (existingInst) existingInst.destroy();
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return null;
-    const inst = new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels: ['Wins', 'Losses', 'Ties'],
-        datasets: [{
-          data,
-          backgroundColor: ['#2f9e44', '#c92a2a', '#868e96'],
-          borderWidth: 2,
-          borderColor: '#ffffff',
-        }]
-      },
-      options: {
-        responsive: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } }
-        },
-        animation: { duration: 400 }
-      }
-    });
-    if (setInst) setInst(inst);
-    return inst;
-  }
 
   // ────────────────────────────────────────────────────────────
   // HISTORY
@@ -1081,9 +923,28 @@
 
   function oppSpritesHtml(deckName) {
     if (!deckName) return '';
-    const sprites = oppDecks[deckName];
-    if (!sprites || !sprites.length) return '';
+    const deck = oppDecks[deckName];
+    if (!deck) return '';
+    const sprites = Array.isArray(deck) ? deck : (deck.sprites || []);
+    if (!sprites.length) return '';
     return sprites.map(s => spriteImg(s)).join(' ');
+  }
+
+  function getOppDeckArchetype(deckName) {
+    if (!deckName) return '';
+    const deck = oppDecks[deckName];
+    if (!deck || Array.isArray(deck)) return '';
+    return deck.archetype || '';
+  }
+
+  function getOppSpriteUrl(deckName) {
+    if (!deckName) return null;
+    const deck = oppDecks[deckName];
+    if (!deck) return null;
+    const sprites = Array.isArray(deck) ? deck : (deck.sprites || []);
+    if (!sprites.length) return null;
+    const sid = spriteIdFromName(sprites[0]);
+    return sid ? homeUrl(sid) : null;
   }
 
   // ────────────────────────────────────────────────────────────
@@ -1125,12 +986,18 @@
 
   document.getElementById('add-opp-deck-form').addEventListener('submit', e => {
     e.preventDefault();
-    const name = document.getElementById('new-opp-deck-name').value.trim();
+    const name     = document.getElementById('new-opp-deck-name').value.trim();
     if (!name) return;
-    const sprites = pendingOppSprites.filter(Boolean);
-    oppDecks[name] = sprites.length ? sprites : (oppDecks[name] || []);
+    const sprites   = pendingOppSprites.filter(Boolean);
+    const archetype = document.getElementById('new-opp-deck-archetype').value.trim();
+    const existing  = oppDecks[name];
+    oppDecks[name] = {
+      sprites:   sprites.length ? sprites : (existing && !Array.isArray(existing) ? (existing.sprites || []) : []),
+      archetype: archetype !== '' ? archetype : (existing && !Array.isArray(existing) ? (existing.archetype || '') : '')
+    };
     save(KEYS.oppDecks, oppDecks);
     document.getElementById('new-opp-deck-name').value = '';
+    document.getElementById('new-opp-deck-archetype').value = '';
     pendingOppSprites = [null, null];
     updateOppDeckTabSpritePreview(0);
     updateOppDeckTabSpritePreview(1);
@@ -1145,36 +1012,61 @@
     listEl.innerHTML = '';
     const names = getAllOppDeckNames();
     noEl.classList.toggle('hidden', names.length > 0);
+
+    // Group by archetype
+    const grouped = {};
     names.forEach(name => {
-      const li = document.createElement('li');
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'deck-name-label';
-      const sprites = oppSpritesHtml(name);
-      nameSpan.innerHTML = (sprites ? sprites + ' ' : '') + esc(name);
-      li.appendChild(nameSpan);
+      const arch = getOppDeckArchetype(name);
+      if (!grouped[arch]) grouped[arch] = [];
+      grouped[arch].push(name);
+    });
 
-      const actions = document.createElement('div');
-      actions.className = 'row-actions';
+    const archetypeKeys = Object.keys(grouped).sort((a, b) => {
+      if (a === '' && b !== '') return 1;
+      if (a !== '' && b === '') return -1;
+      return a.localeCompare(b);
+    });
 
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn-edit';
-      editBtn.textContent = '✏ Edit';
-      editBtn.addEventListener('click', () => openEditOppDeckModal(name));
-      actions.appendChild(editBtn);
+    const showHeaders = archetypeKeys.length > 1 || (archetypeKeys.length === 1 && archetypeKeys[0] !== '');
 
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn-delete';
-      delBtn.textContent = 'Remove';
-      delBtn.addEventListener('click', () => {
-        if (!confirm(`Remove "${name}" from opponent decks? This won't delete match history.`)) return;
-        delete oppDecks[name];
-        save(KEYS.oppDecks, oppDecks);
-        renderOppDecks();
-        populateOppDeckSelects();
+    archetypeKeys.forEach(archKey => {
+      if (showHeaders) {
+        const header = document.createElement('li');
+        header.className = 'archetype-group-header';
+        header.textContent = archKey || 'Unassigned';
+        listEl.appendChild(header);
+      }
+      grouped[archKey].forEach(name => {
+        const li = document.createElement('li');
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'deck-name-label';
+        const sprites = oppSpritesHtml(name);
+        nameSpan.innerHTML = (sprites ? sprites + ' ' : '') + esc(name);
+        li.appendChild(nameSpan);
+
+        const actions = document.createElement('div');
+        actions.className = 'row-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-edit';
+        editBtn.textContent = '✏ Edit';
+        editBtn.addEventListener('click', () => openEditOppDeckModal(name));
+        actions.appendChild(editBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.textContent = 'Remove';
+        delBtn.addEventListener('click', () => {
+          if (!confirm(`Remove "${name}" from opponent decks? This won't delete match history.`)) return;
+          delete oppDecks[name];
+          save(KEYS.oppDecks, oppDecks);
+          renderOppDecks();
+          populateOppDeckSelects();
+        });
+        actions.appendChild(delBtn);
+        li.appendChild(actions);
+        listEl.appendChild(li);
       });
-      actions.appendChild(delBtn);
-      li.appendChild(actions);
-      listEl.appendChild(li);
     });
   }
 
@@ -1285,9 +1177,12 @@
   }
 
   function openEditOppDeckModal(deckName) {
-    const sprites = oppDecks[deckName] || [];
+    const deckData = oppDecks[deckName] || { sprites: [], archetype: '' };
+    const sprites  = Array.isArray(deckData) ? deckData : (deckData.sprites || []);
+    const archetype = Array.isArray(deckData) ? '' : (deckData.archetype || '');
     document.getElementById('edit-opp-deck-original-name').value = deckName;
     document.getElementById('edit-opp-deck-name').value = deckName;
+    document.getElementById('edit-opp-deck-archetype').value = archetype;
     editOppDeckSprites[0] = sprites[0] || null;
     editOppDeckSprites[1] = sprites[1] || null;
     updateEditOppDeckSpritePreview(0);
@@ -1325,14 +1220,15 @@
     const originalName = document.getElementById('edit-opp-deck-original-name').value;
     const newName      = document.getElementById('edit-opp-deck-name').value.trim();
     if (!newName) { alert('Deck name cannot be empty.'); return; }
-    const sprites = editOppDeckSprites.filter(Boolean);
+    const sprites   = editOppDeckSprites.filter(Boolean);
+    const archetype = document.getElementById('edit-opp-deck-archetype').value.trim();
     // If name changed, migrate oppDecks key and match history
     if (newName !== originalName) {
       delete oppDecks[originalName];
       matches = matches.map(m => m.oppDeck === originalName ? { ...m, oppDeck: newName } : m);
       save(KEYS.matches, matches);
     }
-    oppDecks[newName] = sprites;
+    oppDecks[newName] = { sprites, archetype };
     save(KEYS.oppDecks, oppDecks);
     closeEditOppDeckModal();
     renderOppDecks();
@@ -1494,8 +1390,10 @@
           if (typeof parsed.oppDecks !== 'object' || parsed.oppDecks === null || Array.isArray(parsed.oppDecks)) {
             throw new Error('oppDecks must be an object');
           }
-          for (const sprites of Object.values(parsed.oppDecks)) {
-            if (!Array.isArray(sprites)) throw new Error('oppDecks values must be arrays');
+          for (const val of Object.values(parsed.oppDecks)) {
+            if (!Array.isArray(val) && (typeof val !== 'object' || val === null)) {
+              throw new Error('oppDecks values must be arrays or deck objects');
+            }
           }
         }
         // Validate matches array
@@ -1529,6 +1427,14 @@
     }
     if (pendingImportData.oppDecks && typeof pendingImportData.oppDecks === 'object' && !Array.isArray(pendingImportData.oppDecks)) {
       oppDecks = pendingImportData.oppDecks;
+      // Migrate imported oppDecks to new format
+      Object.keys(oppDecks).forEach(name => {
+        if (Array.isArray(oppDecks[name])) {
+          oppDecks[name] = { sprites: oppDecks[name], archetype: '' };
+        } else {
+          oppDecks[name] = { sprites: oppDecks[name]?.sprites || [], archetype: oppDecks[name]?.archetype || '' };
+        }
+      });
       save(KEYS.oppDecks, oppDecks);
     }
     if (Array.isArray(pendingImportData.matches)) {

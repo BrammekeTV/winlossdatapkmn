@@ -212,7 +212,8 @@ textarea { resize: vertical; }
 .stat-chip.pct    { background: #7048e8;        color: #fff; }
 
 /* ── Stats filter ────────────────────────────────────────────── */
-.stats-filter { max-width: 260px; }
+.stats-filters { display: flex; gap: 1rem; flex-wrap: wrap; }
+.stats-filter { flex: 1 1 200px; max-width: 300px; }
 
 /* ── Data table ─────────────────────────────────────────────── */
 .data-table {
