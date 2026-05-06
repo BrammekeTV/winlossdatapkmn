@@ -84,27 +84,43 @@
 
   // Try to populate from sessionStorage immediately (synchronous path)
   try {
-    const cached = sessionStorage.getItem('pkmn_poke_list_v4');
+    const cached = sessionStorage.getItem('pkmn_poke_list_v5');
     if (cached) {
       _pokeList = JSON.parse(cached);
       _buildNameMap(_pokeList);
     }
   } catch { /* sessionStorage unavailable */ }
 
-  // Fetch from PokeAPI in background – limit covers all base pokemon + alternate forms
-  // (Unown-A…Z, Mega forms, regional variants, etc.). API caps at its actual total count.
-  const _pokeListReady = fetch('https://pokeapi.co/api/v2/pokemon?limit=10000')
-    .then(r => r.json())
-    .then(data => {
+  // Fetch the main Pokémon list and Unown forms in parallel.
+  // Unown's letter/symbol forms (unown-a … unown-question) do not appear in the
+  // standard /pokemon listing, so we fetch them separately from /pokemon/unown/
+  // and merge them in when they are absent.
+  const _pokeListReady = Promise.all([
+    fetch('https://pokeapi.co/api/v2/pokemon?limit=10000').then(r => r.json()),
+    fetch('https://pokeapi.co/api/v2/pokemon/unown/').then(r => r.json()).catch(() => null),
+  ])
+    .then(([data, unownData]) => {
       _pokeList = data.results.map(p => {
         const id = parseInt(p.url.replace(/\/$/, '').split('/').pop(), 10);
         return { name: p.name, displayName: _titleCase(p.name), id };
       });
+
+      // Supplement with Unown alternate forms if absent from the main listing
+      if (unownData && Array.isArray(unownData.forms) && !_pokeList.some(p => p.name === 'unown-a')) {
+        const formEntries = unownData.forms
+          .filter(f => f.name !== 'unown')
+          .map(f => {
+            const id = parseInt(f.url.replace(/\/$/, '').split('/').pop(), 10);
+            return { name: f.name, displayName: _titleCase(f.name), id };
+          });
+        _pokeList.push(...formEntries);
+      }
+
       console.info(
-        `[PokéPicker] Loaded ${_pokeList.length} of ${data.count} entries from PokeAPI.`,
+        `[PokéPicker] Loaded ${_pokeList.length} entries (including forms).`,
         'unown-a present:', _pokeList.some(p => p.name === 'unown-a')
       );
-      try { sessionStorage.setItem('pkmn_poke_list_v4', JSON.stringify(_pokeList)); } catch {}
+      try { sessionStorage.setItem('pkmn_poke_list_v5', JSON.stringify(_pokeList)); } catch {}
       _buildNameMap(_pokeList);
     })
     .catch(() => { /* PokeAPI unavailable – graceful degradation */ });
