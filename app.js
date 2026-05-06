@@ -62,7 +62,7 @@
 
   // Try to populate from sessionStorage immediately (synchronous path)
   try {
-    const cached = sessionStorage.getItem('pkmn_poke_list_v3');
+    const cached = sessionStorage.getItem('pkmn_poke_list_v4');
     if (cached) {
       _pokeList = JSON.parse(cached);
       _buildNameMap(_pokeList);
@@ -78,7 +78,11 @@
         const id = parseInt(p.url.replace(/\/$/, '').split('/').pop(), 10);
         return { name: p.name, displayName: _titleCase(p.name), id };
       });
-      try { sessionStorage.setItem('pkmn_poke_list_v3', JSON.stringify(_pokeList)); } catch {}
+      console.info(
+        `[PokéPicker] Loaded ${_pokeList.length} of ${data.count} entries from PokeAPI.`,
+        'unown-a present:', _pokeList.some(p => p.name === 'unown-a')
+      );
+      try { sessionStorage.setItem('pkmn_poke_list_v4', JSON.stringify(_pokeList)); } catch {}
       _buildNameMap(_pokeList);
     })
     .catch(() => { /* PokeAPI unavailable – graceful degradation */ });
@@ -185,6 +189,8 @@
 
     if (filtered.length > 120) {
       pickerGrid.insertAdjacentHTML('beforeend', `<p class="picker-hint">Showing 120 of ${filtered.length}. Type to narrow results.</p>`);
+    } else if (!q) {
+      pickerGrid.insertAdjacentHTML('beforeend', `<p class="picker-hint">${_pokeList.length} Pokémon + forms loaded. Type to search.</p>`);
     }
 
     pickerGrid.querySelectorAll('.sprite-cell').forEach(btn => {
