@@ -453,17 +453,6 @@ textarea { resize: vertical; }
 .opp-l { color: var(--loss); font-weight: 700; }
 .opp-t { color: var(--tie); font-weight: 700; }
 
-/* ── Stats overall pie chart ─────────────────────────────────── */
-.stats-chart-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-}
-.stats-chart-wrap canvas {
-  max-width: 240px;
-  max-height: 240px;
-}
-
 /* ── Modal overlay ───────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
@@ -662,4 +651,145 @@ textarea { resize: vertical; }
   height: 32px;
   vertical-align: middle;
   object-fit: contain;
+}
+
+/* ── Archetype group header in deck list ─────────────────────── */
+li.archetype-group-header {
+  justify-content: flex-start;
+  background: var(--primary);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .35rem .9rem;
+  border-radius: 6px;
+  border: none;
+  pointer-events: none;
+}
+
+/* ── Archetype row in stats table ────────────────────────────── */
+tr.archetype-row td {
+  background: #eef1ff;
+  border-top: 2px solid var(--primary);
+}
+.archetype-label {
+  font-size: .88rem;
+  color: var(--primary);
+}
+tr.indent td:first-child {
+  padding-left: 1.4rem;
+}
+
+/* ── Stats top bar (title + actions) ─────────────────────────── */
+.stats-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-bottom: 1.25rem;
+}
+.stats-top-bar h2 { margin-bottom: 0; }
+.stats-top-actions {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+/* ── Stats view toggle (By Decks / By Archetypes) ────────────── */
+.stats-view-toggle {
+  display: flex;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.stats-view-btn {
+  padding: .4rem .85rem;
+  background: var(--bg);
+  border: none;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.stats-view-btn + .stats-view-btn { border-left: 1.5px solid var(--border); }
+.stats-view-btn:hover { background: #dce4ff; color: var(--primary); }
+.stats-view-btn.active { background: var(--primary); color: #fff; }
+
+/* ── Small button modifier ───────────────────────────────────── */
+.btn-sm {
+  padding: .4rem .85rem;
+  font-size: .82rem;
+}
+
+/* ── Stats overall pie chart: deck-distribution layout ───────── */
+.stats-chart-wrap {
+  margin-bottom: 1.5rem;
+}
+.deck-pie-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.deck-pie-canvas-wrap {
+  flex-shrink: 0;
+}
+.deck-pie-canvas-wrap canvas {
+  display: block;
+}
+.deck-pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  min-width: 130px;
+  max-width: 210px;
+}
+.deck-pie-legend-left  { align-items: flex-end;  text-align: right; }
+.deck-pie-legend-right { align-items: flex-start; text-align: left; }
+.deck-pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.deck-pie-legend-left .deck-pie-legend-item { flex-direction: row-reverse; }
+.deck-pie-legend-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.deck-pie-legend-info {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+}
+.deck-pie-legend-name {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text);
+  flex-wrap: wrap;
+}
+.deck-pie-legend-left .deck-pie-legend-name { flex-direction: row-reverse; justify-content: flex-start; }
+.deck-pie-legend-pct {
+  font-size: .72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .deck-pie-layout { flex-direction: column; align-items: center; }
+  .deck-pie-legend { align-items: center; text-align: center; max-width: 100%; }
+  .deck-pie-legend-left .deck-pie-legend-item,
+  .deck-pie-legend-left .deck-pie-legend-name { flex-direction: row; justify-content: flex-start; }
+  .stats-top-bar { flex-direction: column; align-items: flex-start; }
 }

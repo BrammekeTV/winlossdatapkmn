@@ -94,6 +94,10 @@
             <input type="text" id="new-deck-name" placeholder="Deck name (e.g. Gardevoir ex)" autocomplete="off" required />
             <button type="submit" class="btn-primary">Add Deck</button>
           </div>
+          <div class="form-group">
+            <label for="new-deck-archetype">Archetype <span class="optional">(optional)</span></label>
+            <input type="text" id="new-deck-archetype" placeholder="e.g. Gardevoir, Charizard…" autocomplete="off" />
+          </div>
           <div class="sprite-inputs">
             <div class="sprite-input-group">
               <label>Sprite 1 <span class="optional">(optional)</span></label>
@@ -153,8 +157,17 @@
 
     <!-- STATS TAB -->
     <section id="tab-stats" class="tab-content">
-      <div class="card">
-        <h2>Stats Overview</h2>
+      <div class="card" id="stats-card">
+        <div class="stats-top-bar">
+          <h2>Stats Overview</h2>
+          <div class="stats-top-actions">
+            <div class="stats-view-toggle">
+              <button type="button" class="stats-view-btn active" data-view="decks">By Decks</button>
+              <button type="button" class="stats-view-btn" data-view="archetypes">By Archetypes</button>
+            </div>
+            <button type="button" id="screenshot-btn" class="btn-secondary btn-sm">📸 Screenshot</button>
+          </div>
+        </div>
         <div class="stats-filter form-group">
           <label for="stats-event-filter">Filter by Event</label>
           <select id="stats-event-filter">
@@ -169,13 +182,20 @@
         </div>
         <div id="stats-summary" class="stats-summary"></div>
         <div id="stats-chart-wrap" class="stats-chart-wrap hidden">
-          <canvas id="overall-pie"></canvas>
+          <div class="deck-pie-layout">
+            <div id="deck-pie-legend-left" class="deck-pie-legend deck-pie-legend-left"></div>
+            <div class="deck-pie-canvas-wrap">
+              <canvas id="overall-pie" width="260" height="260"></canvas>
+            </div>
+            <div id="deck-pie-legend-right" class="deck-pie-legend deck-pie-legend-right"></div>
+          </div>
         </div>
         <table id="stats-table" class="data-table">
           <thead>
             <tr>
               <th class="sprite-col">Sprite(s)</th>
               <th>Deck</th>
+              <th id="stats-archetype-col">Archetype</th>
               <th>Matches</th>
               <th>Wins</th>
               <th>Losses</th>
@@ -275,6 +295,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <!-- Sprite picker modal -->
   <div id="sprite-picker-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="sprite-picker-title">
@@ -371,6 +392,10 @@
         <div class="form-group">
           <label for="edit-deck-name">Deck Name</label>
           <input type="text" id="edit-deck-name" required />
+        </div>
+        <div class="form-group">
+          <label for="edit-deck-archetype">Archetype <span class="optional">(optional)</span></label>
+          <input type="text" id="edit-deck-archetype" placeholder="e.g. Gardevoir, Charizard…" autocomplete="off" />
         </div>
         <div class="sprite-inputs">
           <div class="sprite-input-group">
