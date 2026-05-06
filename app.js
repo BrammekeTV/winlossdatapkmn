@@ -42,7 +42,7 @@
   // ── PokeAPI HOME sprite resolution ──────────────────────────────────────────
   const HOME_SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/';
   // Unown (#201) is the sprite shown for the "Other" catch-all pie slice
-  const UNOWN_SPRITE_URL = HOME_SPRITE_BASE + '201.png';
+  const UNOWN_SPRITE_URL = HOME_SPRITE_BASE + '201-question.png';
 
   // These Pokémon have alternate-form sprites named '{base_id}-{form_suffix}.png'
   // (e.g. unown-a → 201-a.png, unown-exclamation → 201-exclamation.png)
