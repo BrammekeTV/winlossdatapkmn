@@ -212,7 +212,8 @@ textarea { resize: vertical; }
 .stat-chip.pct    { background: #7048e8;        color: #fff; }
 
 /* ── Stats filter ────────────────────────────────────────────── */
-.stats-filter { max-width: 260px; }
+.stats-filters { display: flex; gap: 1rem; flex-wrap: wrap; }
+.stats-filter { flex: 1 1 200px; max-width: 300px; }
 
 /* ── Data table ─────────────────────────────────────────────── */
 .data-table {
@@ -453,17 +454,6 @@ textarea { resize: vertical; }
 .opp-l { color: var(--loss); font-weight: 700; }
 .opp-t { color: var(--tie); font-weight: 700; }
 
-/* ── Stats overall pie chart ─────────────────────────────────── */
-.stats-chart-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-}
-.stats-chart-wrap canvas {
-  max-width: 240px;
-  max-height: 240px;
-}
-
 /* ── Modal overlay ───────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
@@ -662,4 +652,169 @@ textarea { resize: vertical; }
   height: 32px;
   vertical-align: middle;
   object-fit: contain;
+}
+
+/* ── Archetype group header in deck list ─────────────────────── */
+li.archetype-group-header {
+  justify-content: flex-start;
+  background: var(--primary);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .35rem .9rem;
+  border-radius: 6px;
+  border: none;
+  pointer-events: none;
+}
+
+/* ── Archetype row in stats table ────────────────────────────── */
+tr.archetype-row td {
+  background: #eef1ff;
+  border-top: 2px solid var(--primary);
+}
+tr.archetype-row:hover td { background: #dce4ff; }
+.archetype-label {
+  font-size: .88rem;
+  color: var(--primary);
+}
+.arch-chevron {
+  font-size: .72rem;
+  color: var(--primary);
+  display: inline-block;
+  transition: transform .15s;
+  line-height: 1;
+}
+tr.indent td:first-child {
+  padding-left: 1.4rem;
+}
+.arch-collapse-all-btn {
+  display: block;
+  margin-bottom: .5rem;
+}
+
+/* ── Stats top bar (title + actions) ─────────────────────────── */
+.stats-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-bottom: 1.25rem;
+}
+.stats-top-bar h2 { margin-bottom: 0; }
+.stats-top-actions {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+/* ── "Split Archetypes" toggle switch ────────────────────────── */
+.split-arch-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.split-arch-switch input[type="checkbox"] { display: none; }
+.switch-thumb {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.switch-thumb::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform .2s;
+}
+.split-arch-switch input:checked ~ .switch-thumb { background: var(--primary); }
+.split-arch-switch input:checked ~ .switch-thumb::after { transform: translateX(14px); }
+
+/* ── Small button modifier ───────────────────────────────────── */
+.btn-sm {
+  padding: .4rem .85rem;
+  font-size: .82rem;
+}
+
+/* ── Stats overall pie chart: deck-distribution layout ───────── */
+.stats-chart-wrap {
+  margin-bottom: 1.5rem;
+}
+.deck-pie-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.deck-pie-canvas-wrap {
+  flex-shrink: 0;
+}
+.deck-pie-canvas-wrap canvas {
+  display: block;
+}
+.deck-pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  min-width: 130px;
+  max-width: 210px;
+}
+.deck-pie-legend-left  { align-items: flex-end;  text-align: right; }
+.deck-pie-legend-right { align-items: flex-start; text-align: left; }
+.deck-pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.deck-pie-legend-left .deck-pie-legend-item { flex-direction: row-reverse; }
+.deck-pie-legend-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.deck-pie-legend-info {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+}
+.deck-pie-legend-name {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text);
+  flex-wrap: wrap;
+}
+.deck-pie-legend-left .deck-pie-legend-name { flex-direction: row-reverse; justify-content: flex-start; }
+.deck-pie-legend-pct {
+  font-size: .72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .deck-pie-layout { flex-direction: column; align-items: center; }
+  .deck-pie-legend { align-items: center; text-align: center; max-width: 100%; }
+  .deck-pie-legend-left .deck-pie-legend-item,
+  .deck-pie-legend-left .deck-pie-legend-name { flex-direction: row; justify-content: flex-start; }
+  .stats-top-bar { flex-direction: column; align-items: flex-start; }
 }
