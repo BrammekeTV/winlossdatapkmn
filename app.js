@@ -44,8 +44,17 @@
   // Unown (#201) is the sprite shown for the "Other" catch-all pie slice
   const UNOWN_SPRITE_URL = HOME_SPRITE_BASE + '201.png';
 
+  // These Pokémon have alternate-form sprites named '{base_id}-{form_suffix}.png'
+  // (e.g. unown-a → 201-a.png, unown-exclamation → 201-exclamation.png)
+  // Most other alternate forms use their numeric PokeAPI ID directly (10xxx.png).
+  const NAMED_FORM_BASE_IDS = {
+    unown: 201, burmy: 412, cherrim: 421, shellos: 422,
+    gastrodon: 423, arceus: 493, deerling: 585, sawsbuck: 586,
+  };
+
   let _pokeList    = null; // [{name, displayName, id}] – loaded from PokeAPI
-  const _nameToIdMap = Object.create(null);
+  const _nameToIdMap    = Object.create(null);
+  const _idToSpriteFile = Object.create(null); // id → sprite filename (without .png)
 
   function _titleCase(slug) {
     return slug.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
@@ -53,10 +62,23 @@
 
   function _buildNameMap(list) {
     list.forEach(p => {
-      _nameToIdMap[p.name]                                    = p.id; // "charizard"
-      _nameToIdMap[p.name.replace(/-/g, '')]                  = p.id; // "charizard"
-      _nameToIdMap[p.displayName.toLowerCase()]               = p.id; // "charizard"
+      _nameToIdMap[p.name]                                    = p.id;
+      _nameToIdMap[p.name.replace(/-/g, '')]                  = p.id;
+      _nameToIdMap[p.displayName.toLowerCase()]               = p.id;
       _nameToIdMap[p.displayName.toLowerCase().replace(/[^a-z0-9]/g, '')] = p.id;
+
+      // For forms whose sprites use '{base_id}-{suffix}.png' rather than the
+      // numeric PokeAPI form ID, store the correct filename so homeUrl() can use it.
+      if (p.id >= 10000) {
+        const dash = p.name.indexOf('-');
+        if (dash !== -1) {
+          const baseName   = p.name.slice(0, dash);
+          const formSuffix = p.name.slice(dash + 1);
+          if (NAMED_FORM_BASE_IDS[baseName] !== undefined) {
+            _idToSpriteFile[p.id] = NAMED_FORM_BASE_IDS[baseName] + '-' + formSuffix;
+          }
+        }
+      }
     });
   }
 
@@ -88,7 +110,8 @@
     .catch(() => { /* PokeAPI unavailable – graceful degradation */ });
 
   function homeUrl(id) {
-    return HOME_SPRITE_BASE + id + '.png';
+    const file = _idToSpriteFile[id] !== undefined ? _idToSpriteFile[id] : id;
+    return HOME_SPRITE_BASE + file + '.png';
   }
 
   function spriteIdFromName(name) {
