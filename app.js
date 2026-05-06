@@ -633,7 +633,7 @@
             callbacks: {
               label: ctx => {
                 const pct = grandTotal ? Math.round((ctx.parsed / grandTotal) * 100) : 0;
-                const e   = entries[ctx.dataIndex];
+                const e   = displayEntries[ctx.dataIndex];
                 return ` ${ctx.label}: ${ctx.parsed} matches (${pct}%) — ${e.wins}W / ${e.losses}L`;
               }
             }
