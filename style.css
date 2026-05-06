@@ -674,12 +674,24 @@ tr.archetype-row td {
   background: #eef1ff;
   border-top: 2px solid var(--primary);
 }
+tr.archetype-row:hover td { background: #dce4ff; }
 .archetype-label {
   font-size: .88rem;
   color: var(--primary);
 }
+.arch-chevron {
+  font-size: .72rem;
+  color: var(--primary);
+  display: inline-block;
+  transition: transform .15s;
+  line-height: 1;
+}
 tr.indent td:first-child {
   padding-left: 1.4rem;
+}
+.arch-collapse-all-btn {
+  display: block;
+  margin-bottom: .5rem;
 }
 
 /* ── Stats top bar (title + actions) ─────────────────────────── */

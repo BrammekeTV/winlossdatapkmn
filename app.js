@@ -37,6 +37,7 @@
 
   // ── Stats view state ─────────────────────────────────────────
   let splitArchetypes = false; // false = merge by archetype (default), true = show individual decks
+  const archetypeCollapsed = {}; // { [archKey]: boolean } – which archetype groups are collapsed
 
   // ── PokeAPI HOME sprite resolution ──────────────────────────────────────────
   const HOME_SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/';
@@ -61,22 +62,23 @@
 
   // Try to populate from sessionStorage immediately (synchronous path)
   try {
-    const cached = sessionStorage.getItem('pkmn_poke_list_v2');
+    const cached = sessionStorage.getItem('pkmn_poke_list_v3');
     if (cached) {
       _pokeList = JSON.parse(cached);
       _buildNameMap(_pokeList);
     }
   } catch { /* sessionStorage unavailable */ }
 
-  // Fetch from PokeAPI in background (updates cache; re-renders if first visit)
-  const _pokeListReady = fetch('https://pokeapi.co/api/v2/pokemon?limit=2000')
+  // Fetch from PokeAPI in background – high limit covers all base forms + alternate forms
+  // (Unown-A…Z, Mega forms, regional variants, etc.). API caps at actual total count.
+  const _pokeListReady = fetch('https://pokeapi.co/api/v2/pokemon?limit=100000')
     .then(r => r.json())
     .then(data => {
       _pokeList = data.results.map(p => {
         const id = parseInt(p.url.replace(/\/$/, '').split('/').pop(), 10);
         return { name: p.name, displayName: _titleCase(p.name), id };
       });
-      try { sessionStorage.setItem('pkmn_poke_list_v2', JSON.stringify(_pokeList)); } catch {}
+      try { sessionStorage.setItem('pkmn_poke_list_v3', JSON.stringify(_pokeList)); } catch {}
       _buildNameMap(_pokeList);
     })
     .catch(() => { /* PokeAPI unavailable – graceful degradation */ });
@@ -742,6 +744,8 @@
       if (overallChartInst) { overallChartInst.destroy(); overallChartInst = null; }
       document.getElementById('deck-pie-legend-left').innerHTML  = '';
       document.getElementById('deck-pie-legend-right').innerHTML = '';
+      const collapseAllBtn = document.getElementById('arch-collapse-all-btn');
+      if (collapseAllBtn) collapseAllBtn.classList.add('hidden');
       return;
     }
     noStats.classList.add('hidden');
@@ -792,22 +796,47 @@
         archetypeGroups[key].push(r);
       });
 
-      // Sort: named archetypes first, "No archetype" last
-      Object.entries(archetypeGroups).sort((a, b) => {
+      const sortedGroups = Object.entries(archetypeGroups).sort((a, b) => {
         if (a[0] === '— No archetype —') return 1;
         if (b[0] === '— No archetype —') return -1;
         return a[0].localeCompare(b[0]);
-      }).forEach(([archKey, rows]) => {
+      });
+
+      // Show "Collapse All / Expand All" button above table when there are groups
+      let collapseAllBtn = document.getElementById('arch-collapse-all-btn');
+      if (!collapseAllBtn) {
+        collapseAllBtn = document.createElement('button');
+        collapseAllBtn.id        = 'arch-collapse-all-btn';
+        collapseAllBtn.type      = 'button';
+        collapseAllBtn.className = 'btn-secondary btn-sm arch-collapse-all-btn';
+        const tableEl = document.getElementById('stats-table');
+        tableEl.parentNode.insertBefore(collapseAllBtn, tableEl);
+      }
+      const allCollapsed = sortedGroups.every(([k]) => archetypeCollapsed[k]);
+      collapseAllBtn.textContent = allCollapsed ? '⊞ Expand All' : '⊟ Collapse All';
+      collapseAllBtn.onclick = () => {
+        const nowAll = sortedGroups.every(([k]) => archetypeCollapsed[k]);
+        sortedGroups.forEach(([k]) => { archetypeCollapsed[k] = !nowAll; });
+        renderStats();
+      };
+      collapseAllBtn.classList.remove('hidden');
+
+      sortedGroups.forEach(([archKey, rows]) => {
         const archWins   = rows.reduce((s, r) => s + r.wins,   0);
         const archLosses = rows.reduce((s, r) => s + r.losses, 0);
         const archTies   = rows.reduce((s, r) => s + r.ties,   0);
         const archTotal  = archWins + archLosses + archTies;
         const archWr     = archTotal ? Math.round((archWins / archTotal) * 100) : 0;
+        const collapsed  = !!archetypeCollapsed[archKey];
 
         const archTr = document.createElement('tr');
         archTr.className = 'archetype-row';
+        archTr.dataset.archKey = archKey;
+        archTr.style.cursor = 'pointer';
         archTr.innerHTML = `
-          <td class="sprite-col"></td>
+          <td class="sprite-col">
+            <span class="arch-chevron">${collapsed ? '▶' : '▼'}</span>
+          </td>
           <td><strong class="archetype-label">🗂 ${esc(archKey)}</strong></td>
           <td style="display:none"></td>
           <td>${archTotal}</td>
@@ -821,11 +850,20 @@
             </div>
           </td>
         `;
+        archTr.addEventListener('click', () => {
+          archetypeCollapsed[archKey] = !archetypeCollapsed[archKey];
+          renderStats();
+        });
         statsBody.appendChild(archTr);
-        rows.forEach(r => appendOppRow(r, statsBody, 'indent'));
+
+        if (!collapsed) {
+          rows.forEach(r => appendOppRow(r, statsBody, 'indent'));
+        }
       });
     } else {
-      // splitArchetypes = true → individual rows
+      // splitArchetypes = true → individual rows; hide collapse-all button
+      const collapseAllBtn = document.getElementById('arch-collapse-all-btn');
+      if (collapseAllBtn) collapseAllBtn.classList.add('hidden');
       oppRows.forEach(r => appendOppRow(r, statsBody, ''));
     }
   }
