@@ -52,6 +52,41 @@
     gastrodon: 423, arceus: 493, deerling: 585, sawsbuck: 586,
   };
 
+  // Alternate forms that are absent from the standard /pokemon listing.
+  // 'id' is the sprite filename (without .png) used directly by homeUrl().
+  const STATIC_EXTRA_FORMS = [
+    // Unown – 26 letters + ! + ?
+    ...'abcdefghijklmnopqrstuvwxyz'.split('').map(l => ({
+      name: `unown-${l}`, displayName: `Unown ${l.toUpperCase()}`, id: `201-${l}`,
+    })),
+    { name: 'unown-exclamation', displayName: 'Unown !',  id: '201-exclamation' },
+    { name: 'unown-question',    displayName: 'Unown ?',  id: '201-question'    },
+    // Burmy
+    { name: 'burmy-sandy', displayName: 'Burmy Sandy', id: '412-sandy' },
+    { name: 'burmy-trash', displayName: 'Burmy Trash', id: '412-trash' },
+    // Cherrim
+    { name: 'cherrim-sunshine', displayName: 'Cherrim Sunshine', id: '421-sunshine' },
+    // Shellos
+    { name: 'shellos-east', displayName: 'Shellos East', id: '422-east' },
+    // Gastrodon
+    { name: 'gastrodon-east', displayName: 'Gastrodon East', id: '423-east' },
+    // Arceus – one entry per type plate
+    ...['fighting','flying','poison','ground','rock','bug','ghost','steel',
+        'fire','water','grass','electric','psychic','ice','dragon','dark','fairy'].map(t => ({
+      name: `arceus-${t}`,
+      displayName: `Arceus ${t.charAt(0).toUpperCase() + t.slice(1)}`,
+      id: `493-${t}`,
+    })),
+    // Deerling
+    { name: 'deerling-summer', displayName: 'Deerling Summer', id: '585-summer' },
+    { name: 'deerling-autumn', displayName: 'Deerling Autumn', id: '585-autumn' },
+    { name: 'deerling-winter', displayName: 'Deerling Winter', id: '585-winter' },
+    // Sawsbuck
+    { name: 'sawsbuck-summer', displayName: 'Sawsbuck Summer', id: '586-summer' },
+    { name: 'sawsbuck-autumn', displayName: 'Sawsbuck Autumn', id: '586-autumn' },
+    { name: 'sawsbuck-winter', displayName: 'Sawsbuck Winter', id: '586-winter' },
+  ];
+
   let _pokeList    = null; // [{name, displayName, id}] – loaded from PokeAPI
   const _nameToIdMap    = Object.create(null);
   const _idToSpriteFile = Object.create(null); // id → sprite filename (without .png)
@@ -60,16 +95,27 @@
     return slug.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
   }
 
+  // Merge STATIC_EXTRA_FORMS into list, skipping names already present.
+  function _mergeStaticForms(list) {
+    const existing = new Set(list.map(p => p.name));
+    STATIC_EXTRA_FORMS.forEach(f => { if (!existing.has(f.name)) list.push(f); });
+  }
+
   function _buildNameMap(list) {
     list.forEach(p => {
-      _nameToIdMap[p.name]                                    = p.id;
-      _nameToIdMap[p.name.replace(/-/g, '')]                  = p.id;
-      _nameToIdMap[p.displayName.toLowerCase()]               = p.id;
-      _nameToIdMap[p.displayName.toLowerCase().replace(/[^a-z0-9]/g, '')] = p.id;
+      _nameToIdMap[p.name]                  = p.id;
+      _nameToIdMap[p.name.replace(/-/g, '')] = p.id;
+      _nameToIdMap[p.displayName.toLowerCase()] = p.id;
+      // Only register the stripped-display variant for numeric-ID entries.
+      // Skipping it for string-ID (static) entries prevents display names like
+      // 'Unown !' (stripped → 'unown') from overwriting the base form's mapping.
+      if (typeof p.id === 'number') {
+        _nameToIdMap[p.displayName.toLowerCase().replace(/[^a-z0-9]/g, '')] = p.id;
+      }
 
       // For forms whose sprites use '{base_id}-{suffix}.png' rather than the
       // numeric PokeAPI form ID, store the correct filename so homeUrl() can use it.
-      if (p.id >= 10000) {
+      if (typeof p.id === 'number' && p.id >= 10000) {
         const dash = p.name.indexOf('-');
         if (dash !== -1) {
           const baseName   = p.name.slice(0, dash);
@@ -84,48 +130,36 @@
 
   // Try to populate from sessionStorage immediately (synchronous path)
   try {
-    const cached = sessionStorage.getItem('pkmn_poke_list_v5');
+    const cached = sessionStorage.getItem('pkmn_poke_list_v6');
     if (cached) {
       _pokeList = JSON.parse(cached);
+      _mergeStaticForms(_pokeList);
       _buildNameMap(_pokeList);
     }
   } catch { /* sessionStorage unavailable */ }
 
-  // Fetch the main Pokémon list and Unown forms in parallel.
-  // Unown's letter/symbol forms (unown-a … unown-question) do not appear in the
-  // standard /pokemon listing, so we fetch them separately from /pokemon/unown/
-  // and merge them in when they are absent.
-  const _pokeListReady = Promise.all([
-    fetch('https://pokeapi.co/api/v2/pokemon?limit=10000').then(r => r.json()),
-    fetch('https://pokeapi.co/api/v2/pokemon/unown/').then(r => r.json()).catch(() => null),
-  ])
-    .then(([data, unownData]) => {
+  // Fetch the main Pokémon list from PokeAPI. Alternate forms for several Pokémon
+  // (Unown, Burmy, Cherrim, etc.) are absent from this listing, so STATIC_EXTRA_FORMS
+  // guarantees they are always present as a reliable fallback.
+  const _pokeListReady = fetch('https://pokeapi.co/api/v2/pokemon?limit=10000')
+    .then(r => r.json())
+    .then(data => {
       _pokeList = data.results.map(p => {
         const id = parseInt(p.url.replace(/\/$/, '').split('/').pop(), 10);
         return { name: p.name, displayName: _titleCase(p.name), id };
       });
-
-      // Supplement with Unown alternate forms if absent from the main listing
-      if (unownData && Array.isArray(unownData.forms) && !_pokeList.some(p => p.name === 'unown-a')) {
-        const formEntries = unownData.forms
-          .filter(f => f.name !== 'unown')
-          .map(f => {
-            const id = parseInt(f.url.replace(/\/$/, '').split('/').pop(), 10);
-            return { name: f.name, displayName: _titleCase(f.name), id };
-          });
-        _pokeList.push(...formEntries);
-      }
-
+      _mergeStaticForms(_pokeList);
       console.info(
-        `[PokéPicker] Loaded ${_pokeList.length} entries (including forms).`,
+        `[PokéPicker] Loaded ${_pokeList.length} entries (including static forms).`,
         'unown-a present:', _pokeList.some(p => p.name === 'unown-a')
       );
-      try { sessionStorage.setItem('pkmn_poke_list_v5', JSON.stringify(_pokeList)); } catch {}
+      try { sessionStorage.setItem('pkmn_poke_list_v6', JSON.stringify(_pokeList)); } catch {}
       _buildNameMap(_pokeList);
     })
     .catch(() => { /* PokeAPI unavailable – graceful degradation */ });
 
   function homeUrl(id) {
+    if (typeof id === 'string') return HOME_SPRITE_BASE + id + '.png';
     const file = _idToSpriteFile[id] !== undefined ? _idToSpriteFile[id] : id;
     return HOME_SPRITE_BASE + file + '.png';
   }
