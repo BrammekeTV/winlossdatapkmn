@@ -69,9 +69,9 @@
     }
   } catch { /* sessionStorage unavailable */ }
 
-  // Fetch from PokeAPI in background – high limit covers all base forms + alternate forms
-  // (Unown-A…Z, Mega forms, regional variants, etc.). API caps at actual total count.
-  const _pokeListReady = fetch('https://pokeapi.co/api/v2/pokemon?limit=100000')
+  // Fetch from PokeAPI in background – limit covers all base pokemon + alternate forms
+  // (Unown-A…Z, Mega forms, regional variants, etc.). API caps at its actual total count.
+  const _pokeListReady = fetch('https://pokeapi.co/api/v2/pokemon?limit=10000')
     .then(r => r.json())
     .then(data => {
       _pokeList = data.results.map(p => {
