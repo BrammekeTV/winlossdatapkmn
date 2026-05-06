@@ -165,10 +165,11 @@
         <div class="stats-top-bar">
           <h2>Stats Overview</h2>
           <div class="stats-top-actions">
-            <div class="stats-view-toggle">
-              <button type="button" class="stats-view-btn active" data-view="decks">By Decks</button>
-              <button type="button" class="stats-view-btn" data-view="archetypes">By Archetypes</button>
-            </div>
+            <label class="split-arch-switch" title="When off, opponent decks sharing an archetype are grouped together">
+              <input type="checkbox" id="split-arch-toggle" />
+              <span class="switch-thumb"></span>
+              Split Archetypes
+            </label>
             <button type="button" id="screenshot-btn" class="btn-secondary btn-sm">📸 Screenshot</button>
           </div>
         </div>

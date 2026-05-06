@@ -699,27 +699,39 @@ tr.indent td:first-child {
   flex-wrap: wrap;
 }
 
-/* ── Stats view toggle (By Decks / By Archetypes) ────────────── */
-.stats-view-toggle {
-  display: flex;
-  border: 1.5px solid var(--border);
-  border-radius: 7px;
-  overflow: hidden;
-}
-.stats-view-btn {
-  padding: .4rem .85rem;
-  background: var(--bg);
-  border: none;
+/* ── "Split Archetypes" toggle switch ────────────────────────── */
+.split-arch-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
   font-size: .82rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background .15s, color .15s;
-  white-space: nowrap;
+  user-select: none;
 }
-.stats-view-btn + .stats-view-btn { border-left: 1.5px solid var(--border); }
-.stats-view-btn:hover { background: #dce4ff; color: var(--primary); }
-.stats-view-btn.active { background: var(--primary); color: #fff; }
+.split-arch-switch input[type="checkbox"] { display: none; }
+.switch-thumb {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.switch-thumb::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform .2s;
+}
+.split-arch-switch input:checked ~ .switch-thumb { background: var(--primary); }
+.split-arch-switch input:checked ~ .switch-thumb::after { transform: translateX(14px); }
 
 /* ── Small button modifier ───────────────────────────────────── */
 .btn-sm {
