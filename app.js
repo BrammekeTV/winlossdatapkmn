@@ -24,7 +24,7 @@
   let oppDecks = loadObj(KEYS.oppDecks); // { [deckName]: string[] }
 
   // Migrate old string-based decks to objects
-  decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '' } : { archetype: '', ...d });
+  decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '' } : { ...d, archetype: d.archetype || '' });
 
   // ── Stats view state ─────────────────────────────────────────
   let statsView = 'decks'; // 'decks' | 'archetypes'
@@ -534,6 +534,10 @@
       const entries   = chart.data._deckEntries;
       if (!entries) return;
 
+      const MIN_SLICE_ANGLE_FOR_SPRITE = 0.15;
+      const MAX_SPRITE_SIZE            = 28;
+      const SPRITE_SIZE_RATIO          = 0.7;
+
       entries.forEach((entry, i) => {
         const sliceWins = meta.data[2 * i];
         const sliceLoss = meta.data[2 * i + 1];
@@ -543,7 +547,7 @@
         const startAngle = sliceWins.startAngle;
         const endAngle   = sliceLoss.endAngle;
         const arcSpan    = endAngle - startAngle;
-        if (arcSpan < 0.15) return; // Skip too-small slices
+        if (arcSpan < MIN_SLICE_ANGLE_FOR_SPRITE) return; // Skip too-small slices
 
         const midAngle = (startAngle + endAngle) / 2;
         const r        = (sliceWins.outerRadius + sliceWins.innerRadius) / 2;
@@ -556,7 +560,7 @@
         const img = _getCachedImg(spriteUrl, () => { chart.draw(); });
         if (!img.complete || img.naturalWidth === 0) return;
 
-        const size = Math.min(28, arcSpan * r * 0.7);
+        const size = Math.min(MAX_SPRITE_SIZE, arcSpan * r * SPRITE_SIZE_RATIO);
         ctx.save();
         ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
         ctx.restore();
@@ -831,7 +835,7 @@
   }
 
   function appendDeckRow(r, idx, statsBody, extraClass) {
-    const colCount = statsView === 'decks' ? 9 : 9;
+    const colspan = statsView === 'archetypes' ? 8 : 9;
     const tr = document.createElement('tr');
     if (extraClass) tr.classList.add(extraClass);
     tr.innerHTML = `
@@ -868,7 +872,7 @@
 
     const canvasId = `deck-pie-${idx}`;
     oppTr.innerHTML = `
-      <td colspan="9" class="opp-breakdown-cell">
+      <td colspan="${colspan}" class="opp-breakdown-cell">
         <div class="opp-breakdown-inner">
           <div class="opp-breakdown-chart-wrap">
             <canvas id="${canvasId}" width="180" height="180"></canvas>
@@ -1520,7 +1524,7 @@
     if (!confirm('This will replace all existing data. Continue?')) return;
 
     if (Array.isArray(pendingImportData.decks)) {
-      decks = pendingImportData.decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '' } : { archetype: '', ...d });
+      decks = pendingImportData.decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '' } : { ...d, archetype: d.archetype || '' });
       save(KEYS.decks, decks);
     }
     if (pendingImportData.oppDecks && typeof pendingImportData.oppDecks === 'object' && !Array.isArray(pendingImportData.oppDecks)) {
