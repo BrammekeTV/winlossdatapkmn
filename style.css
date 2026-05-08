@@ -765,9 +765,22 @@ tr.indent td:first-child {
 }
 .deck-pie-canvas-wrap {
   flex-shrink: 0;
+  position: relative; /* anchor for the sprite overlay */
 }
 .deck-pie-canvas-wrap canvas {
   display: block;
+}
+/* Sprite images layered over the canvas slices — browser handles scaling at full quality */
+.pie-slice-sprite {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+.pie-sprite-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
 }
 .deck-pie-legend {
   flex: 1;
@@ -776,8 +789,10 @@ tr.indent td:first-child {
   gap: .55rem;
   min-width: 130px;
 }
-.deck-pie-legend-left  { align-items: flex-end;  text-align: right; }
-.deck-pie-legend-right { align-items: flex-start; text-align: left; }
+/* Left panel: items flush to the outer (left) edge; dot remains on the pie-facing (right) side */
+.deck-pie-legend-left  { align-items: flex-start; text-align: left; }
+/* Right panel: items flush to the outer (right) edge; dot remains on the pie-facing (left) side */
+.deck-pie-legend-right { align-items: flex-end; }
 .deck-pie-legend-item {
   display: flex;
   align-items: center;

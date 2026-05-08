@@ -677,9 +677,11 @@
     const layoutEl  = document.querySelector('.deck-pie-layout');
     const chartWrap = document.getElementById('stats-chart-wrap');
 
-    // Remove any leftover SVG connector overlay
+    // Remove any leftover SVG connector overlay and sprite overlay
     const oldSvg = layoutEl && layoutEl.querySelector('.pie-connector-svg');
     if (oldSvg) oldSvg.remove();
+    const oldOverlay = document.querySelector('.pie-sprite-overlay');
+    if (oldOverlay) oldOverlay.innerHTML = '';
 
     if (!entries.length) { chartWrap.classList.add('hidden'); return; }
     chartWrap.classList.remove('hidden');
@@ -778,46 +780,6 @@
     leftItems.forEach(({ entry, i })  => leftEl.appendChild(buildLegendItem(entry, i)));
     rightItems.forEach(({ entry, i }) => rightEl.appendChild(buildLegendItem(entry, i)));
 
-    // ── Sprite image cache (shared across renders & plugin) ──────
-    const imgCache = {};
-    const spriteUrls = [...new Set(displayEntries.map(e => e.spriteUrl).filter(Boolean))];
-
-    // ── Chart.js plugin: draw sprites inside slices ──────────────
-    const pieSpritePlugin = {
-      id: 'pieSpritePlugin',
-      afterDraw(chart) {
-        const ctx  = chart.ctx;
-        const meta = chart.getDatasetMeta(0);
-        meta.data.forEach((arc, i) => {
-          const entry = displayEntries[i];
-          if (!entry.spriteUrl) return;
-
-          const sliceAngle = arc.endAngle - arc.startAngle;
-          // ~26° minimum arc; slices smaller than this are too narrow to render a readable sprite
-          if (sliceAngle < 0.45) return;
-
-          const img = imgCache[entry.spriteUrl];
-          if (!img || !img.complete || img.naturalWidth === 0) return;
-
-          // 0.55 * sliceAngle gives an inscribed-circle approximation; cap at 48 px for readability
-          const spriteSize = Math.min(Math.floor(arc.outerRadius * 0.55 * sliceAngle), 48);
-          if (spriteSize < 10) return;
-
-          const midAngle = (arc.startAngle + arc.endAngle) / 2;
-          // 0.58 = ~midpoint between inner edge (0) and outer edge (1.0), biased slightly inward
-          const r = arc.outerRadius * 0.58;
-          const x = arc.x + Math.cos(midAngle) * r;
-          const y = arc.y + Math.sin(midAngle) * r;
-
-          ctx.save();
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
-          ctx.restore();
-        });
-      }
-    };
-
     // ── Create chart ─────────────────────────────────────────────
     const canvas = document.getElementById('overall-pie');
     overallChartInst = new Chart(canvas, {
@@ -847,19 +809,44 @@
         },
         animation: {
           duration: 400,
-          onComplete: () => requestAnimationFrame(drawConnectors)
+          onComplete: () => requestAnimationFrame(() => { drawConnectors(); updateSpriteOverlay(); })
         }
-      },
-      plugins: [pieSpritePlugin]
+      }
     });
 
-    // ── Preload sprites; update chart when each one loads ────────
-    spriteUrls.forEach(url => {
-      const img = new Image();
-      imgCache[url] = img;
-      img.onload = () => { if (overallChartInst) overallChartInst.update('none'); };
-      img.src = url;
-    });
+    // ── Place sprite <img> elements over the canvas (avoids canvas scaling artefacts) ──
+    const canvasWrap = document.querySelector('.deck-pie-canvas-wrap');
+    // Ensure a persistent overlay container exists inside the canvas-wrap
+    let overlayEl = canvasWrap.querySelector('.pie-sprite-overlay');
+    if (!overlayEl) {
+      overlayEl = document.createElement('div');
+      overlayEl.className = 'pie-sprite-overlay';
+      canvasWrap.appendChild(overlayEl);
+    }
+
+    function updateSpriteOverlay() {
+      if (!overallChartInst) { overlayEl.innerHTML = ''; return; }
+      const meta = overallChartInst.getDatasetMeta(0);
+      overlayEl.innerHTML = '';
+      meta.data.forEach((arc, i) => {
+        const entry = displayEntries[i];
+        if (!entry.spriteUrl) return;
+        const sliceAngle = arc.endAngle - arc.startAngle;
+        // ~26° minimum — too narrow to place a readable sprite
+        if (sliceAngle < 0.45) return;
+        const midAngle = (arc.startAngle + arc.endAngle) / 2;
+        // 0.58 places the sprite in the visual midpoint of the slice depth
+        const r = arc.outerRadius * 0.58;
+        const x = arc.x + Math.cos(midAngle) * r;
+        const y = arc.y + Math.sin(midAngle) * r;
+        const img = document.createElement('img');
+        img.src = entry.spriteUrl;
+        img.alt = entry.label;
+        img.className = 'pkmn-sprite pie-slice-sprite';
+        img.style.cssText = `position:absolute;left:${x}px;top:${y}px;transform:translate(-50%,-50%);pointer-events:none;`;
+        overlayEl.appendChild(img);
+      });
+    }
 
     // ── Draw SVG connector lines: legend item → pie slice edge ───
     function drawConnectors() {
@@ -876,14 +863,7 @@
       const offX = canvasRect.left - layoutRect.left;
       const offY = canvasRect.top  - layoutRect.top;
 
-      // Chart centre from any arc element (all share the same centre)
       const { x: cx, y: cy } = meta.data[0];
-
-      // Use the inner edge of each legend panel as a consistent vertical "rail".
-      // The connector runs: pie edge → radial arm → horizontal to rail → vertical to item.
-      // This guarantees no segment crosses the pie circle.
-      const leftRailX  = leftEl.getBoundingClientRect().right - layoutRect.left;
-      const rightRailX = rightEl.getBoundingClientRect().left  - layoutRect.left;
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('pie-connector-svg');
@@ -899,29 +879,32 @@
         if (!arc) return;
 
         const outerR = arc.outerRadius;
-        // 18 px arm ensures the elbow point is well outside outerR before turning horizontal
-        const armLen = 18;
+        // Extend radially 20 px past the outer edge before turning toward the legend item;
+        // this guarantees the elbow point is fully outside the pie circle.
+        const armLen = 20;
         const isLeft = Math.cos(midAngle) < 0;
-        const railX  = isLeft ? leftRailX : rightRailX;
 
-        // P1: pie outer edge at midAngle
+        // P1: point on the pie outer edge at this slice's mid-angle
         const pieEdgeX = offX + cx + Math.cos(midAngle) * outerR;
         const pieEdgeY = offY + cy + Math.sin(midAngle) * outerR;
 
-        // P2: radial arm — clears the pie boundary
+        // P2: radial elbow — safely outside the pie
         const elbowX = offX + cx + Math.cos(midAngle) * (outerR + armLen);
         const elbowY = offY + cy + Math.sin(midAngle) * (outerR + armLen);
 
-        // P3: horizontal from P2 to the panel rail (same Y as P2)
-        // P4: vertical along the rail to the legend item's midpoint Y
+        // P3: inner edge of the legend item (dot side), at the item's vertical midpoint.
+        // Items are sorted top-to-bottom by midAngle, matching slice order, so lines
+        // drawn this way will never cross each other.
         const itemRect = legendItemEl.getBoundingClientRect();
         const itemMidY = itemRect.top + itemRect.height / 2 - layoutRect.top;
+        const dotEdgeX = isLeft
+          ? itemRect.right - layoutRect.left   // dot is at the RIGHT of left-panel items
+          : itemRect.left  - layoutRect.left;  // dot is at the LEFT  of right-panel items
 
         const color = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
 
         const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-        polyline.setAttribute('points',
-          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${railX},${elbowY} ${railX},${itemMidY}`);
+        polyline.setAttribute('points', `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${dotEdgeX},${itemMidY}`);
         polyline.setAttribute('fill',         'none');
         polyline.setAttribute('stroke',       color);
         polyline.setAttribute('stroke-width', '1.5');
@@ -930,12 +913,12 @@
       });
     }
 
-    // Redraw connectors when the window is resized (debounced via rAF)
+    // Redraw connectors and sprite overlay when the window is resized (debounced via rAF)
     let _rafId = null;
     _pieResizeCtrl = new AbortController();
     window.addEventListener('resize', () => {
       if (_rafId !== null) cancelAnimationFrame(_rafId);
-      _rafId = requestAnimationFrame(() => { _rafId = null; drawConnectors(); });
+      _rafId = requestAnimationFrame(() => { _rafId = null; drawConnectors(); updateSpriteOverlay(); });
     }, { signal: _pieResizeCtrl.signal });
   }
 
