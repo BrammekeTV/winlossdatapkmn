@@ -647,7 +647,8 @@
     }
   });
 
-  let overallChartInst = null;
+  let overallChartInst   = null;
+  let _pieResizeCtrl     = null; // AbortController for the resize listener
 
   // ── Pantone-inspired pie palette (10 colours + "Other" grey) ────────────────
   const PIE_PALETTE = [
@@ -671,17 +672,24 @@
   // ── Render the opponent-deck distribution pie with side legend ─
   function renderDeckDistributionChart(entries) {
     if (overallChartInst) { overallChartInst.destroy(); overallChartInst = null; }
+    if (_pieResizeCtrl)   { _pieResizeCtrl.abort(); _pieResizeCtrl = null; }
 
+    const layoutEl  = document.querySelector('.deck-pie-layout');
     const chartWrap = document.getElementById('stats-chart-wrap');
+
+    // Remove any leftover SVG connector overlay
+    const oldSvg = layoutEl && layoutEl.querySelector('.pie-connector-svg');
+    if (oldSvg) oldSvg.remove();
+
     if (!entries.length) { chartWrap.classList.add('hidden'); return; }
     chartWrap.classList.remove('hidden');
 
     // Cap at top 10; bundle the rest into an "Other" slice
     const PIE_MAX = 10;
-    let displayEntries = entries;
-    if (entries.length > PIE_MAX) {
-      const top   = entries.slice(0, PIE_MAX);
-      const rest  = entries.slice(PIE_MAX);
+    let displayEntries = [...entries];
+    if (displayEntries.length > PIE_MAX) {
+      const top     = displayEntries.slice(0, PIE_MAX);
+      const rest    = displayEntries.slice(PIE_MAX);
       const oWins   = rest.reduce((s, e) => s + e.wins,   0);
       const oLosses = rest.reduce((s, e) => s + e.losses, 0);
       const oTies   = rest.reduce((s, e) => s + e.ties,   0);
@@ -690,15 +698,130 @@
     }
 
     const grandTotal = displayEntries.reduce((s, e) => s + e.wins + e.losses + e.ties, 0);
-    const labels   = displayEntries.map(e => e.label);
-    const data     = displayEntries.map(e => e.wins + e.losses + e.ties);
-    const bgColors = displayEntries.map((e, i) => e.isOther ? PIE_OTHER_COLOR : _sliceColor(i));
+    const data       = displayEntries.map(e => e.wins + e.losses + e.ties);
+    const bgColors   = displayEntries.map((e, i) => e.isOther ? PIE_OTHER_COLOR : _sliceColor(i));
 
+    // ── Compute midpoint angle for each slice ────────────────────
+    // Chart.js starts at -π/2 (top) and goes clockwise.
+    const midAngles = [];
+    {
+      let cum = -Math.PI / 2;
+      data.forEach(d => {
+        const sweep = grandTotal ? (d / grandTotal) * 2 * Math.PI : 0;
+        midAngles.push(cum + sweep / 2);
+        cum += sweep;
+      });
+    }
+
+    // ── Assign entries to left / right panels based on mid-angle ─
+    // cos(angle) < 0  → midpoint is in left half  → left legend
+    // cos(angle) >= 0 → midpoint is in right half → right legend
+    const leftItems  = []; // { entry, i, midAngle }
+    const rightItems = [];
+    displayEntries.forEach((entry, i) => {
+      (Math.cos(midAngles[i]) < 0 ? leftItems : rightItems)
+        .push({ entry, i, midAngle: midAngles[i] });
+    });
+    // Sort top → bottom on each side (smaller sin = higher on screen)
+    leftItems.sort((a, b)  => Math.sin(a.midAngle) - Math.sin(b.midAngle));
+    rightItems.sort((a, b) => Math.sin(a.midAngle) - Math.sin(b.midAngle));
+
+    // ── Build legend items ───────────────────────────────────────
+    const leftEl  = document.getElementById('deck-pie-legend-left');
+    const rightEl = document.getElementById('deck-pie-legend-right');
+    leftEl.innerHTML  = '';
+    rightEl.innerHTML = '';
+
+    function buildLegendItem(entry, i) {
+      const entryTotal = entry.wins + entry.losses + entry.ties;
+      const pct = grandTotal ? Math.round((entryTotal / grandTotal) * 100) : 0;
+
+      const item = document.createElement('div');
+      item.className = 'deck-pie-legend-item';
+      item.dataset.pieIndex = String(i);
+
+      const colorDot = document.createElement('span');
+      colorDot.className = 'deck-pie-legend-dot';
+      colorDot.style.background = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
+
+      const info = document.createElement('div');
+      info.className = 'deck-pie-legend-info';
+
+      const nameRow = document.createElement('div');
+      nameRow.className = 'deck-pie-legend-name';
+
+      // Show sprite next to name only when the slice is too small to contain it
+      const sliceAngle = grandTotal ? (data[i] / grandTotal) * 2 * Math.PI : 0;
+      const fitsInSlice = entry.spriteUrl && sliceAngle >= 0.45; // ~26° threshold
+      if (entry.spriteUrl && !fitsInSlice) {
+        const img = document.createElement('img');
+        img.className = 'pkmn-sprite';
+        img.src       = entry.spriteUrl;
+        img.alt       = entry.label;
+        img.width     = 24;
+        img.height    = 24;
+        nameRow.appendChild(img);
+      }
+      const nameTxt = document.createElement('span');
+      nameTxt.textContent = entry.label;
+      nameRow.appendChild(nameTxt);
+
+      const pctEl = document.createElement('div');
+      pctEl.className = 'deck-pie-legend-pct';
+      pctEl.textContent = `${pct}% (${entry.wins}W / ${entry.losses}L)`;
+
+      info.appendChild(nameRow);
+      info.appendChild(pctEl);
+      item.appendChild(colorDot);
+      item.appendChild(info);
+      return item;
+    }
+
+    leftItems.forEach(({ entry, i })  => leftEl.appendChild(buildLegendItem(entry, i)));
+    rightItems.forEach(({ entry, i }) => rightEl.appendChild(buildLegendItem(entry, i)));
+
+    // ── Sprite image cache (shared across renders & plugin) ──────
+    const imgCache = {};
+    const spriteUrls = [...new Set(displayEntries.map(e => e.spriteUrl).filter(Boolean))];
+
+    // ── Chart.js plugin: draw sprites inside slices ──────────────
+    const pieSpritePlugin = {
+      id: 'pieSpritePlugin',
+      afterDraw(chart) {
+        const ctx  = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        meta.data.forEach((arc, i) => {
+          const entry = displayEntries[i];
+          if (!entry.spriteUrl) return;
+
+          const sliceAngle = arc.endAngle - arc.startAngle;
+          if (sliceAngle < 0.45) return; // too small — sprite shown in legend instead
+
+          const img = imgCache[entry.spriteUrl];
+          if (!img || !img.complete || img.naturalWidth === 0) return;
+
+          // Scale sprite to fit the slice, max 32 px
+          const spriteSize = Math.min(Math.floor(arc.outerRadius * 0.55 * sliceAngle), 32);
+          if (spriteSize < 10) return;
+
+          const midAngle = (arc.startAngle + arc.endAngle) / 2;
+          const r = arc.outerRadius * 0.58;
+          const x = arc.x + Math.cos(midAngle) * r;
+          const y = arc.y + Math.sin(midAngle) * r;
+
+          ctx.save();
+          ctx.drawImage(img, x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
+          ctx.restore();
+        });
+      }
+    };
+
+    // ── Create chart ─────────────────────────────────────────────
     const canvas = document.getElementById('overall-pie');
     overallChartInst = new Chart(canvas, {
       type: 'pie',
       data: {
-        labels,
+        labels: displayEntries.map(e => e.label),
         datasets: [{
           data,
           backgroundColor: bgColors,
@@ -720,62 +843,89 @@
             }
           }
         },
-        animation: { duration: 400 }
-      }
+        animation: {
+          duration: 400,
+          onComplete: () => requestAnimationFrame(drawConnectors)
+        }
+      },
+      plugins: [pieSpritePlugin]
     });
 
-    // Side legend: split entries left / right
-    const leftEl  = document.getElementById('deck-pie-legend-left');
-    const rightEl = document.getElementById('deck-pie-legend-right');
-    leftEl.innerHTML  = '';
-    rightEl.innerHTML = '';
-
-    const half = Math.ceil(displayEntries.length / 2);
-
-    displayEntries.forEach((entry, i) => {
-      const entryTotal = entry.wins + entry.losses + entry.ties;
-      const pct = grandTotal ? Math.round((entryTotal / grandTotal) * 100) : 0;
-
-      const item = document.createElement('div');
-      item.className = 'deck-pie-legend-item';
-
-      const colorDot = document.createElement('span');
-      colorDot.className = 'deck-pie-legend-dot';
-      colorDot.style.background = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
-
-      const info = document.createElement('div');
-      info.className = 'deck-pie-legend-info';
-
-      const nameRow = document.createElement('div');
-      nameRow.className = 'deck-pie-legend-name';
-      if (entry.spriteUrl) {
-        const img = document.createElement('img');
-        img.className = 'pkmn-sprite';
-        img.src     = entry.spriteUrl;
-        img.alt     = entry.label;
-        img.width   = 24;
-        img.height  = 24;
-        nameRow.appendChild(img);
-      }
-      const nameTxt = document.createElement('span');
-      nameTxt.textContent = entry.label;
-      nameRow.appendChild(nameTxt);
-
-      const pctEl = document.createElement('div');
-      pctEl.className = 'deck-pie-legend-pct';
-      pctEl.textContent = `${pct}% (${entry.wins}W / ${entry.losses}L)`;
-
-      info.appendChild(nameRow);
-      info.appendChild(pctEl);
-      item.appendChild(colorDot);
-      item.appendChild(info);
-
-      if (i < half) {
-        leftEl.appendChild(item);
-      } else {
-        rightEl.appendChild(item);
-      }
+    // ── Preload sprites; update chart when each one loads ────────
+    spriteUrls.forEach(url => {
+      const img = new Image();
+      imgCache[url] = img;
+      img.onload = () => { if (overallChartInst) overallChartInst.update('none'); };
+      img.src = url;
     });
+
+    // ── Draw SVG connector lines: legend item → pie slice edge ───
+    function drawConnectors() {
+      if (!layoutEl) return;
+      const existingSvg = layoutEl.querySelector('.pie-connector-svg');
+      if (existingSvg) existingSvg.remove();
+      if (!overallChartInst) return;
+
+      const meta = overallChartInst.getDatasetMeta(0);
+      if (!meta || !meta.data.length) return;
+
+      const layoutRect = layoutEl.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const offX = canvasRect.left - layoutRect.left;
+      const offY = canvasRect.top  - layoutRect.top;
+
+      // Chart centre & outer radius from the first arc element
+      const { x: cx, y: cy } = meta.data[0];
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.classList.add('pie-connector-svg');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:1';
+      layoutEl.appendChild(svg);
+
+      [...leftItems, ...rightItems].forEach(({ entry, i, midAngle }) => {
+        const legendItemEl = layoutEl.querySelector(`[data-pie-index="${i}"]`);
+        if (!legendItemEl) return;
+
+        const arc = meta.data[i];
+        if (!arc) return;
+
+        const outerR = arc.outerRadius;
+
+        // Point on the pie's outer edge at this slice's mid-angle
+        const pieEdgeX = offX + cx + Math.cos(midAngle) * outerR;
+        const pieEdgeY = offY + cy + Math.sin(midAngle) * outerR;
+
+        // Short elbow extending outward from the pie edge
+        const elbowLen = 8;
+        const elbowX = offX + cx + Math.cos(midAngle) * (outerR + elbowLen);
+        const elbowY = offY + cy + Math.sin(midAngle) * (outerR + elbowLen);
+
+        // Horizontal endpoint at the inner edge of the legend item
+        const itemRect    = legendItemEl.getBoundingClientRect();
+        const itemMidY    = itemRect.top + itemRect.height / 2 - layoutRect.top;
+        const isLeft      = Math.cos(midAngle) < 0;
+        const legendConnX = isLeft
+          ? itemRect.right - layoutRect.left   // right edge of left-panel item
+          : itemRect.left  - layoutRect.left;  // left  edge of right-panel item
+
+        const color = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
+
+        const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        polyline.setAttribute('points',
+          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${legendConnX},${itemMidY}`);
+        polyline.setAttribute('fill',         'none');
+        polyline.setAttribute('stroke',       color);
+        polyline.setAttribute('stroke-width', '1.5');
+        polyline.setAttribute('opacity',      '0.75');
+        svg.appendChild(polyline);
+      });
+    }
+
+    // Redraw connectors when the window is resized
+    _pieResizeCtrl = new AbortController();
+    window.addEventListener('resize', () => requestAnimationFrame(drawConnectors),
+      { signal: _pieResizeCtrl.signal });
   }
 
   function renderStats() {
@@ -821,6 +971,10 @@
       noStats.classList.remove('hidden');
       document.getElementById('stats-chart-wrap').classList.add('hidden');
       if (overallChartInst) { overallChartInst.destroy(); overallChartInst = null; }
+      if (_pieResizeCtrl)   { _pieResizeCtrl.abort(); _pieResizeCtrl = null; }
+      const layoutEl = document.querySelector('.deck-pie-layout');
+      const oldSvg = layoutEl && layoutEl.querySelector('.pie-connector-svg');
+      if (oldSvg) oldSvg.remove();
       document.getElementById('deck-pie-legend-left').innerHTML  = '';
       document.getElementById('deck-pie-legend-right').innerHTML = '';
       const collapseAllBtn = document.getElementById('arch-collapse-all-btn');

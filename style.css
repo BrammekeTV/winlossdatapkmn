@@ -761,6 +761,7 @@ tr.indent td:first-child {
   justify-content: center;
   gap: 1.25rem;
   flex-wrap: wrap;
+  position: relative; /* needed for the SVG connector overlay */
 }
 .deck-pie-canvas-wrap {
   flex-shrink: 0;
