@@ -922,10 +922,13 @@
       });
     }
 
-    // Redraw connectors when the window is resized
+    // Redraw connectors when the window is resized (debounced via rAF)
+    let _rafId = null;
     _pieResizeCtrl = new AbortController();
-    window.addEventListener('resize', () => requestAnimationFrame(drawConnectors),
-      { signal: _pieResizeCtrl.signal });
+    window.addEventListener('resize', () => {
+      if (_rafId !== null) cancelAnimationFrame(_rafId);
+      _rafId = requestAnimationFrame(() => { _rafId = null; drawConnectors(); });
+    }, { signal: _pieResizeCtrl.signal });
   }
 
   function renderStats() {
