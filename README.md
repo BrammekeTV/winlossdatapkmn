@@ -10,7 +10,7 @@ A personal win/loss tracker for Pokémon TCG matches, hosted via GitHub Pages.
 - 💾 All data saved locally in your browser (localStorage)
 
 ## Event Types Supported
-TCGLive · Challenge · Cup · Regional · International · Worlds
+League · TCGLive · Challenge · Cup · Regional · International · Worlds
 
 ## Usage
 Visit the live site: https://brammeketv.github.io/winlossdatapkmn
