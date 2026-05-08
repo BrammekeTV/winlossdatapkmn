@@ -793,16 +793,18 @@
           if (!entry.spriteUrl) return;
 
           const sliceAngle = arc.endAngle - arc.startAngle;
-          if (sliceAngle < 0.45) return; // too small — sprite shown in legend instead
+          // ~26° minimum arc; slices smaller than this are too narrow to render a readable sprite
+          if (sliceAngle < 0.45) return;
 
           const img = imgCache[entry.spriteUrl];
           if (!img || !img.complete || img.naturalWidth === 0) return;
 
-          // Scale sprite to fit the slice, max 48 px
+          // 0.55 * sliceAngle gives an inscribed-circle approximation; cap at 48 px for readability
           const spriteSize = Math.min(Math.floor(arc.outerRadius * 0.55 * sliceAngle), 48);
           if (spriteSize < 10) return;
 
           const midAngle = (arc.startAngle + arc.endAngle) / 2;
+          // 0.58 = ~midpoint between inner edge (0) and outer edge (1.0), biased slightly inward
           const r = arc.outerRadius * 0.58;
           const x = arc.x + Math.cos(midAngle) * r;
           const y = arc.y + Math.sin(midAngle) * r;
@@ -897,6 +899,7 @@
         if (!arc) return;
 
         const outerR = arc.outerRadius;
+        // 18 px arm ensures the elbow point is well outside outerR before turning horizontal
         const armLen = 18;
         const isLeft = Math.cos(midAngle) < 0;
         const railX  = isLeft ? leftRailX : rightRailX;
