@@ -758,8 +758,8 @@ tr.indent td:first-child {
 .deck-pie-layout {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 1.25rem;
+  justify-content: space-between;
+  gap: 1rem;
   flex-wrap: wrap;
   position: relative; /* needed for the SVG connector overlay */
 }
@@ -770,11 +770,11 @@ tr.indent td:first-child {
   display: block;
 }
 .deck-pie-legend {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: .55rem;
   min-width: 130px;
-  max-width: 210px;
 }
 .deck-pie-legend-left  { align-items: flex-end;  text-align: right; }
 .deck-pie-legend-right { align-items: flex-start; text-align: left; }

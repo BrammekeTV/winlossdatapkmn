@@ -750,10 +750,8 @@
       const nameRow = document.createElement('div');
       nameRow.className = 'deck-pie-legend-name';
 
-      // Show sprite next to name only when the slice is too small to contain it
-      const sliceAngle = grandTotal ? (data[i] / grandTotal) * 2 * Math.PI : 0;
-      const fitsInSlice = entry.spriteUrl && sliceAngle >= 0.45; // ~26° threshold
-      if (entry.spriteUrl && !fitsInSlice) {
+      // Always show sprite next to the deck name in the legend
+      if (entry.spriteUrl) {
         const img = document.createElement('img');
         img.className = 'pkmn-sprite';
         img.src       = entry.spriteUrl;
@@ -800,8 +798,8 @@
           const img = imgCache[entry.spriteUrl];
           if (!img || !img.complete || img.naturalWidth === 0) return;
 
-          // Scale sprite to fit the slice, max 32 px
-          const spriteSize = Math.min(Math.floor(arc.outerRadius * 0.55 * sliceAngle), 32);
+          // Scale sprite to fit the slice, max 48 px
+          const spriteSize = Math.min(Math.floor(arc.outerRadius * 0.55 * sliceAngle), 48);
           if (spriteSize < 10) return;
 
           const midAngle = (arc.startAngle + arc.endAngle) / 2;
@@ -810,6 +808,8 @@
           const y = arc.y + Math.sin(midAngle) * r;
 
           ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
           ctx.restore();
         });
@@ -874,8 +874,14 @@
       const offX = canvasRect.left - layoutRect.left;
       const offY = canvasRect.top  - layoutRect.top;
 
-      // Chart centre & outer radius from the first arc element
+      // Chart centre from any arc element (all share the same centre)
       const { x: cx, y: cy } = meta.data[0];
+
+      // Use the inner edge of each legend panel as a consistent vertical "rail".
+      // The connector runs: pie edge → radial arm → horizontal to rail → vertical to item.
+      // This guarantees no segment crosses the pie circle.
+      const leftRailX  = leftEl.getBoundingClientRect().right - layoutRect.left;
+      const rightRailX = rightEl.getBoundingClientRect().left  - layoutRect.left;
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('pie-connector-svg');
@@ -891,29 +897,28 @@
         if (!arc) return;
 
         const outerR = arc.outerRadius;
+        const armLen = 18;
+        const isLeft = Math.cos(midAngle) < 0;
+        const railX  = isLeft ? leftRailX : rightRailX;
 
-        // Point on the pie's outer edge at this slice's mid-angle
+        // P1: pie outer edge at midAngle
         const pieEdgeX = offX + cx + Math.cos(midAngle) * outerR;
         const pieEdgeY = offY + cy + Math.sin(midAngle) * outerR;
 
-        // Short elbow extending outward from the pie edge
-        const elbowLen = 8;
-        const elbowX = offX + cx + Math.cos(midAngle) * (outerR + elbowLen);
-        const elbowY = offY + cy + Math.sin(midAngle) * (outerR + elbowLen);
+        // P2: radial arm — clears the pie boundary
+        const elbowX = offX + cx + Math.cos(midAngle) * (outerR + armLen);
+        const elbowY = offY + cy + Math.sin(midAngle) * (outerR + armLen);
 
-        // Horizontal endpoint at the inner edge of the legend item
-        const itemRect    = legendItemEl.getBoundingClientRect();
-        const itemMidY    = itemRect.top + itemRect.height / 2 - layoutRect.top;
-        const isLeft      = Math.cos(midAngle) < 0;
-        const legendConnX = isLeft
-          ? itemRect.right - layoutRect.left   // right edge of left-panel item
-          : itemRect.left  - layoutRect.left;  // left  edge of right-panel item
+        // P3: horizontal from P2 to the panel rail (same Y as P2)
+        // P4: vertical along the rail to the legend item's midpoint Y
+        const itemRect = legendItemEl.getBoundingClientRect();
+        const itemMidY = itemRect.top + itemRect.height / 2 - layoutRect.top;
 
         const color = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
 
         const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
         polyline.setAttribute('points',
-          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${legendConnX},${itemMidY}`);
+          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${railX},${elbowY} ${railX},${itemMidY}`);
         polyline.setAttribute('fill',         'none');
         polyline.setAttribute('stroke',       color);
         polyline.setAttribute('stroke-width', '1.5');
