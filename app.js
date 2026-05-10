@@ -923,14 +923,14 @@
     if (!splitArchetypes) {
       const archetypeGroups = {};
       oppRows.forEach(r => {
-        const key = r.archetype || '— No archetype —';
+        const key = r.archetype || 'Unassigned';
         if (!archetypeGroups[key]) archetypeGroups[key] = [];
         archetypeGroups[key].push(r);
       });
 
       const sortedGroups = Object.entries(archetypeGroups).sort((a, b) => {
-        if (a[0] === '— No archetype —') return 1;
-        if (b[0] === '— No archetype —') return -1;
+        if (a[0] === 'Unassigned') return 1;
+        if (b[0] === 'Unassigned') return -1;
         return a[0].localeCompare(b[0]);
       });
 
@@ -945,7 +945,7 @@
         tableEl.parentNode.insertBefore(collapseAllBtn, tableEl);
       }
       const allCollapsed = sortedGroups.every(([k]) => archetypeCollapsed[k]);
-      collapseAllBtn.textContent = allCollapsed ? '⊞ Expand All' : '⊟ Collapse All';
+      collapseAllBtn.textContent = allCollapsed ? 'Expand All' : 'Collapse All';
       collapseAllBtn.onclick = () => {
         const nowAll = sortedGroups.every(([k]) => archetypeCollapsed[k]);
         sortedGroups.forEach(([k]) => { archetypeCollapsed[k] = !nowAll; });
@@ -969,7 +969,7 @@
           <td class="sprite-col">
             <span class="arch-chevron">${collapsed ? '▶' : '▼'}</span>
           </td>
-          <td><strong class="archetype-label">🗂 ${esc(archKey)}</strong></td>
+          <td><strong class="archetype-label">${esc(archKey)}</strong></td>
           <td style="display:none"></td>
           <td>${archTotal}</td>
           <td>${archWins}</td>

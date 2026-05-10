@@ -3,29 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pokémon TCG Win/Loss Tracker</title>
+  <title>TCG Tracker</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <div class="header-inner">
-      <span class="logo">⚡</span>
-      <h1>Pokémon TCG Tracker</h1>
-      <button id="theme-toggle" class="btn-theme-toggle" aria-label="Toggle theme" title="Toggle dark/light mode">
-        <span class="theme-icon-dark">☀</span>
-        <span class="theme-icon-light">☾</span>
-      </button>
-    </div>
-  </header>
-
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="log">Log Match</button>
-    <button class="tab-btn" data-tab="decks">Decks</button>
-    <button class="tab-btn" data-tab="opp-decks">Opponents</button>
-    <button class="tab-btn" data-tab="stats">Stats</button>
-    <button class="tab-btn" data-tab="history">History</button>
-    <button class="tab-btn" data-tab="data">Data</button>
-  </nav>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-name">TCG Tracker</span>
+        <button id="theme-toggle" class="btn-theme-toggle" aria-label="Toggle theme" title="Toggle dark/light mode">
+          <span class="theme-icon-dark">☀</span>
+          <span class="theme-icon-light">☾</span>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="tab-btn active" data-tab="log">Log Match</button>
+        <button class="tab-btn" data-tab="decks">Decks</button>
+        <button class="tab-btn" data-tab="opp-decks">Opponents</button>
+        <button class="tab-btn" data-tab="stats">Stats</button>
+        <button class="tab-btn" data-tab="history">History</button>
+        <button class="tab-btn" data-tab="data">Data</button>
+      </nav>
+    </aside>
 
   <main>
     <!-- LOG MATCH TAB -->
@@ -335,6 +334,7 @@
       </div>
     </section>
   </main>
+  </div><!-- /.app-shell -->
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
