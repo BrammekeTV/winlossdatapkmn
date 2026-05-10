@@ -77,6 +77,7 @@ body {
   overflow-y: auto;
 }
 [data-theme="light"] .sidebar {
+  background: var(--surface);
   border-right-color: var(--border);
 }
 
@@ -95,6 +96,9 @@ body {
   font-weight: 700;
   letter-spacing: -.01em;
   color: var(--header-text);
+}
+[data-theme="light"] .brand-name {
+  color: var(--text);
 }
 
 /* ── Theme toggle ──────────────────────────────────────────── */
@@ -116,6 +120,15 @@ body {
   line-height: 1;
 }
 .btn-theme-toggle:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.35); }
+[data-theme="light"] .btn-theme-toggle {
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+[data-theme="light"] .btn-theme-toggle:hover {
+  background: rgba(0,0,0,.04);
+  border-color: var(--text-muted);
+  color: var(--text);
+}
 
 /* Show correct icon per theme — dark is default, light is override */
 .theme-icon-dark  { display: inline; }
@@ -156,11 +169,12 @@ body {
 }
 [data-theme="light"] .tab-btn:hover {
   color: var(--text);
-  background: rgba(0,0,0,.04);
+  background: var(--bg);
 }
 [data-theme="light"] .tab-btn.active {
   color: var(--primary);
-  background: rgba(9,105,218,.06);
+  background: rgba(9,105,218,.07);
+  border-left-color: var(--primary);
 }
 
 /* ── Main content area ─────────────────────────────────────── */
