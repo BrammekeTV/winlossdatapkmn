@@ -24,7 +24,7 @@
   let oppDecks = loadObj(KEYS.oppDecks); // { [deckName]: string[] }
 
   // Migrate old string-based decks to objects
-  decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '' } : { ...d, archetype: d.archetype || '' });
+  decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '', rotation: '' } : { ...d, archetype: d.archetype || '', rotation: d.rotation || '' });
 
   // Migrate oppDecks from { name: string[] } to { name: { sprites: string[], archetype: string } }
   Object.keys(oppDecks).forEach(name => {
@@ -344,10 +344,12 @@
     }
     const sprites = pendingSprites.filter(Boolean);
     const archetype = document.getElementById('new-deck-archetype').value.trim();
-    decks.push({ name, sprites, archetype });
+    const rotation = document.getElementById('new-deck-rotation').value.trim();
+    decks.push({ name, sprites, archetype, rotation });
     save(KEYS.decks, decks);
     newDeckInput.value = '';
     document.getElementById('new-deck-archetype').value = '';
+    document.getElementById('new-deck-rotation').value = '';
     pendingSprites = [null, null];
     updateDeckSpritePreview(0);
     updateDeckSpritePreview(1);
@@ -387,7 +389,9 @@
         const nameSpan = document.createElement('span');
         nameSpan.className = 'deck-name-label';
         const sprites = deckSpritesHtml(deck.name);
-        nameSpan.innerHTML = (sprites ? sprites + ' ' : '') + esc(deck.name);
+        let nameHtml = (sprites ? sprites + ' ' : '') + esc(deck.name);
+        if (deck.rotation) nameHtml += ` <span class="rotation-badge">${esc(deck.rotation)}</span>`;
+        nameSpan.innerHTML = nameHtml;
         li.appendChild(nameSpan);
 
         const actions = document.createElement('div');
@@ -611,6 +615,7 @@
   const statsEventFilter = document.getElementById('stats-event-filter');
   statsEventFilter.addEventListener('change', renderStats);
   document.getElementById('stats-deck-filter').addEventListener('change', renderStats);
+  document.getElementById('stats-rotation-filter').addEventListener('input', renderStats);
 
   // "Split Archetypes" toggle
   document.getElementById('split-arch-toggle').addEventListener('change', function () {
@@ -779,11 +784,18 @@
   }
 
   function renderStats() {
-    const eventFilter = statsEventFilter.value;
-    const deckFilter  = document.getElementById('stats-deck-filter').value;
+    const eventFilter    = statsEventFilter.value;
+    const deckFilter     = document.getElementById('stats-deck-filter').value;
+    const rotationFilter = document.getElementById('stats-rotation-filter').value.trim().toLowerCase();
 
     let filtered = eventFilter === 'all' ? matches : matches.filter(m => m.event === eventFilter);
     if (deckFilter !== 'all') filtered = filtered.filter(m => m.myDeck === deckFilter);
+    if (rotationFilter) {
+      filtered = filtered.filter(m => {
+        const deck = decks.find(d => d.name === m.myDeck);
+        return deck && (deck.rotation || '').toLowerCase().includes(rotationFilter);
+      });
+    }
 
     const total  = filtered.length;
     const wins   = filtered.filter(m => m.result === 'Win').length;
@@ -1284,6 +1296,7 @@
     document.getElementById('edit-deck-original-name').value = deckName;
     document.getElementById('edit-deck-name').value = deckName;
     document.getElementById('edit-deck-archetype').value = deck.archetype || '';
+    document.getElementById('edit-deck-rotation').value = deck.rotation || '';
     editDeckSprites[0] = deck.sprites[0] || null;
     editDeckSprites[1] = deck.sprites[1] || null;
     updateEditDeckSpritePreview(0);
@@ -1328,7 +1341,7 @@
     const sprites = editDeckSprites.filter(Boolean);
     const idx = decks.findIndex(d => d.name === originalName);
     if (idx === -1) return;
-    decks[idx] = { name: newName, sprites, archetype };
+    decks[idx] = { name: newName, sprites, archetype, rotation: document.getElementById('edit-deck-rotation').value.trim() };
     // Update match history references if name changed
     if (newName !== originalName) {
       matches = matches.map(m => m.myDeck === originalName ? { ...m, myDeck: newName } : m);

@@ -99,6 +99,10 @@
             <label for="new-deck-archetype">Archetype <span class="optional">(optional)</span></label>
             <input type="text" id="new-deck-archetype" placeholder="e.g. Gardevoir, Charizard…" autocomplete="off" />
           </div>
+          <div class="form-group">
+            <label for="new-deck-rotation">Rotation <span class="optional">(optional)</span></label>
+            <input type="text" id="new-deck-rotation" placeholder="e.g. SVI, PAL…" autocomplete="off" maxlength="10" />
+          </div>
           <div class="sprite-inputs">
             <div class="sprite-input-group">
               <label>Sprite 1 <span class="optional">(optional)</span></label>
@@ -193,6 +197,10 @@
             <select id="stats-deck-filter">
               <option value="all">All Decks</option>
             </select>
+          </div>
+          <div class="stats-filter form-group">
+            <label for="stats-rotation-filter">Filter by Rotation</label>
+            <input type="text" id="stats-rotation-filter" placeholder="e.g. SVI, PAL…" autocomplete="off" maxlength="10" />
           </div>
         </div>
         <div id="stats-summary" class="stats-summary"></div>
@@ -412,6 +420,10 @@
         <div class="form-group">
           <label for="edit-deck-archetype">Archetype <span class="optional">(optional)</span></label>
           <input type="text" id="edit-deck-archetype" placeholder="e.g. Gardevoir, Charizard…" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="edit-deck-rotation">Rotation <span class="optional">(optional)</span></label>
+          <input type="text" id="edit-deck-rotation" placeholder="e.g. SVI, PAL…" autocomplete="off" maxlength="10" />
         </div>
         <div class="sprite-inputs">
           <div class="sprite-input-group">

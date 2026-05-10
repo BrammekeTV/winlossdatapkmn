@@ -818,3 +818,18 @@ tr.indent td:first-child {
   .deck-pie-legend-left .deck-pie-legend-name { flex-direction: row; justify-content: flex-start; }
   .stats-top-bar { flex-direction: column; align-items: flex-start; }
 }
+
+/* ── Rotation badge ─────────────────────────────────────────── */
+.rotation-badge {
+  display: inline-block;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: .1em .45em;
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  vertical-align: middle;
+  margin-left: .25rem;
+  text-transform: uppercase;
+}
