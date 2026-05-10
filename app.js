@@ -879,13 +879,16 @@
       //                        matching the elbowY order exactly
       //   4. spine→dot       : purely horizontal at unique itemMidY per item — never crosses
       const armLen = 20;
+      // Extra gap between the outermost pie edge+arm and the vertical spine,
+      // so the spine is always visually clear of the pie circle.
+      const spineGap = 8;
       let maxOuterR = 0;
       [...leftItems, ...rightItems].forEach(({ i }) => {
         const arc = meta.data[i];
         if (arc) maxOuterR = Math.max(maxOuterR, arc.outerRadius);
       });
-      const leftSpineX  = offX + cx - maxOuterR - armLen - 8;
-      const rightSpineX = offX + cx + maxOuterR + armLen + 8;
+      const leftSpineX  = offX + cx - maxOuterR - armLen - spineGap;
+      const rightSpineX = offX + cx + maxOuterR + armLen + spineGap;
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('pie-connector-svg');
