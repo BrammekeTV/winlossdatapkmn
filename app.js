@@ -1717,6 +1717,22 @@
     renderHistory();
   });
 
+  // ── Theme toggle ─────────────────────────────────────────────
+  (function () {
+    const html = document.documentElement;
+    const btn = document.getElementById('theme-toggle');
+    const stored = localStorage.getItem('pkmn_theme');
+    if (stored === 'light') html.setAttribute('data-theme', 'light');
+    // default is already dark (set in HTML attribute)
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('pkmn_theme', next);
+      });
+    }
+  })();
+
   // ────────────────────────────────────────────────────────────
   // INIT
   // ────────────────────────────────────────────────────────────
