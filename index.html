@@ -77,6 +77,10 @@
             <input type="date" id="match-date" required />
           </div>
           <div class="form-group">
+            <label for="match-rotation">Rotation <span class="optional">(optional)</span></label>
+            <input type="text" id="match-rotation" placeholder="e.g. GHI, HIJ…" autocomplete="off" maxlength="10" />
+          </div>
+          <div class="form-group">
             <label for="match-notes">Notes <span class="optional">(optional)</span></label>
             <textarea id="match-notes" rows="2" placeholder="Any notes about the match…"></textarea>
           </div>
@@ -98,10 +102,6 @@
           <div class="form-group">
             <label for="new-deck-archetype">Archetype <span class="optional">(optional)</span></label>
             <input type="text" id="new-deck-archetype" placeholder="e.g. Gardevoir, Charizard…" autocomplete="off" />
-          </div>
-          <div class="form-group">
-            <label for="new-deck-rotation">Rotation <span class="optional">(optional)</span></label>
-            <input type="text" id="new-deck-rotation" placeholder="e.g. G, GH, GHI…" autocomplete="off" maxlength="10" />
           </div>
           <div class="sprite-inputs">
             <div class="sprite-input-group">
@@ -139,10 +139,6 @@
           <div class="form-group">
             <label for="new-opp-deck-archetype">Archetype <span class="optional">(optional)</span></label>
             <input type="text" id="new-opp-deck-archetype" placeholder="e.g. Charizard, Lost Zone…" autocomplete="off" />
-          </div>
-          <div class="form-group">
-            <label for="new-opp-deck-rotation">Rotation <span class="optional">(optional)</span></label>
-            <input type="text" id="new-opp-deck-rotation" placeholder="e.g. G, GH, GHI…" autocomplete="off" maxlength="10" />
           </div>
           <div class="sprite-inputs">
             <div class="sprite-input-group">
@@ -204,7 +200,7 @@
           </div>
           <div class="stats-filter form-group">
             <label for="stats-rotation-filter">Filter by Rotation</label>
-            <input type="text" id="stats-rotation-filter" placeholder="e.g. G, GH, GHI…" autocomplete="off" maxlength="10" />
+            <input type="text" id="stats-rotation-filter" placeholder="e.g. GHI, HIJ…" autocomplete="off" maxlength="10" />
           </div>
         </div>
         <div id="stats-summary" class="stats-summary"></div>
@@ -278,6 +274,7 @@
               <th class="deck-col">Your Deck</th>
               <th class="deck-col">Opponent</th>
               <th>Event</th>
+              <th>Rotation</th>
               <th>Result</th>
               <th>Notes</th>
               <th></th>
@@ -397,6 +394,10 @@
           <input type="date" id="edit-match-date" required />
         </div>
         <div class="form-group">
+          <label for="edit-match-rotation">Rotation <span class="optional">(optional)</span></label>
+          <input type="text" id="edit-match-rotation" placeholder="e.g. GHI, HIJ…" autocomplete="off" maxlength="10" />
+        </div>
+        <div class="form-group">
           <label for="edit-match-notes">Notes <span class="optional">(optional)</span></label>
           <textarea id="edit-match-notes" rows="2"></textarea>
         </div>
@@ -424,10 +425,6 @@
         <div class="form-group">
           <label for="edit-deck-archetype">Archetype <span class="optional">(optional)</span></label>
           <input type="text" id="edit-deck-archetype" placeholder="e.g. Gardevoir, Charizard…" autocomplete="off" />
-        </div>
-        <div class="form-group">
-          <label for="edit-deck-rotation">Rotation <span class="optional">(optional)</span></label>
-          <input type="text" id="edit-deck-rotation" placeholder="e.g. G, GH, GHI…" autocomplete="off" maxlength="10" />
         </div>
         <div class="sprite-inputs">
           <div class="sprite-input-group">
@@ -471,10 +468,6 @@
         <div class="form-group">
           <label for="edit-opp-deck-archetype">Archetype <span class="optional">(optional)</span></label>
           <input type="text" id="edit-opp-deck-archetype" placeholder="e.g. Charizard, Lost Zone…" autocomplete="off" />
-        </div>
-        <div class="form-group">
-          <label for="edit-opp-deck-rotation">Rotation <span class="optional">(optional)</span></label>
-          <input type="text" id="edit-opp-deck-rotation" placeholder="e.g. G, GH, GHI…" autocomplete="off" maxlength="10" />
         </div>
         <div class="sprite-inputs">
           <div class="sprite-input-group">

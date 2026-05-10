@@ -24,14 +24,14 @@
   let oppDecks = loadObj(KEYS.oppDecks); // { [deckName]: string[] }
 
   // Migrate old string-based decks to objects
-  decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '', rotation: '' } : { ...d, archetype: d.archetype || '', rotation: d.rotation || '' });
+  decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '' } : { ...d, archetype: d.archetype || '' });
 
-  // Migrate oppDecks from { name: string[] } to { name: { sprites: string[], archetype: string, rotation: string } }
+  // Migrate oppDecks from { name: string[] } to { name: { sprites: string[], archetype: string } }
   Object.keys(oppDecks).forEach(name => {
     if (Array.isArray(oppDecks[name])) {
-      oppDecks[name] = { sprites: oppDecks[name], archetype: '', rotation: '' };
+      oppDecks[name] = { sprites: oppDecks[name], archetype: '' };
     } else if (oppDecks[name] && typeof oppDecks[name] === 'object') {
-      oppDecks[name] = { sprites: oppDecks[name].sprites || [], archetype: oppDecks[name].archetype || '', rotation: oppDecks[name].rotation || '' };
+      oppDecks[name] = { sprites: oppDecks[name].sprites || [], archetype: oppDecks[name].archetype || '' };
     }
   });
 
@@ -344,12 +344,10 @@
     }
     const sprites = pendingSprites.filter(Boolean);
     const archetype = document.getElementById('new-deck-archetype').value.trim();
-    const rotation = document.getElementById('new-deck-rotation').value.trim();
-    decks.push({ name, sprites, archetype, rotation });
+    decks.push({ name, sprites, archetype });
     save(KEYS.decks, decks);
     newDeckInput.value = '';
     document.getElementById('new-deck-archetype').value = '';
-    document.getElementById('new-deck-rotation').value = '';
     pendingSprites = [null, null];
     updateDeckSpritePreview(0);
     updateDeckSpritePreview(1);
@@ -390,7 +388,6 @@
         nameSpan.className = 'deck-name-label';
         const sprites = deckSpritesHtml(deck.name);
         let nameHtml = (sprites ? sprites + ' ' : '') + esc(deck.name);
-        if (deck.rotation) nameHtml += ` <span class="rotation-badge">${esc(deck.rotation)}</span>`;
         nameSpan.innerHTML = nameHtml;
         li.appendChild(nameSpan);
 
@@ -584,12 +581,13 @@
     const result  = resultInput.value;
     const event   = document.getElementById('event-type').value;
     const date    = document.getElementById('match-date').value;
+    const rotation = document.getElementById('match-rotation').value.trim();
     const notes   = document.getElementById('match-notes').value.trim();
 
     if (!oppDeck) { alert('Please select an opponent deck or enter a new deck name.'); return; }
     if (!result) { alert('Please select Win, Loss, or Tie.'); return; }
 
-    matches.push({ id: Date.now(), myDeck, oppDeck, result, event, date, notes });
+    matches.push({ id: Date.now(), myDeck, oppDeck, result, event, date, rotation, notes });
     save(KEYS.matches, matches);
 
     logForm.reset();
@@ -791,11 +789,7 @@
     let filtered = eventFilter === 'all' ? matches : matches.filter(m => m.event === eventFilter);
     if (deckFilter !== 'all') filtered = filtered.filter(m => m.myDeck === deckFilter);
     if (rotationFilter) {
-      const deckRotationMap = new Map(decks.map(d => [d.name, (d.rotation || '').toLowerCase()]));
-      filtered = filtered.filter(m => {
-        const rot = deckRotationMap.get(m.myDeck) || '';
-        return rot.includes(rotationFilter);
-      });
+      filtered = filtered.filter(m => (m.rotation || '').toLowerCase().includes(rotationFilter));
     }
 
     const total  = filtered.length;
@@ -1048,6 +1042,7 @@
       tr.appendChild(oppCell);
 
       tr.appendChild(td(m.event));
+      tr.appendChild(td(m.rotation || ''));
 
       const resultCell = document.createElement('td');
       const badge      = document.createElement('span');
@@ -1142,9 +1137,9 @@
 
   function getOppDeckData(deckName) {
     const deck = oppDecks[deckName];
-    if (!deck) return { sprites: [], archetype: '', rotation: '' };
-    if (Array.isArray(deck)) return { sprites: deck, archetype: '', rotation: '' };
-    return { sprites: deck.sprites || [], archetype: deck.archetype || '', rotation: deck.rotation || '' };
+    if (!deck) return { sprites: [], archetype: '' };
+    if (Array.isArray(deck)) return { sprites: deck, archetype: '' };
+    return { sprites: deck.sprites || [], archetype: deck.archetype || '' };
   }
 
   // ────────────────────────────────────────────────────────────
@@ -1190,17 +1185,14 @@
     if (!name) return;
     const sprites   = pendingOppSprites.filter(Boolean);
     const archetype = document.getElementById('new-opp-deck-archetype').value.trim();
-    const rotation  = document.getElementById('new-opp-deck-rotation').value.trim();
     const existing  = getOppDeckData(name);
     oppDecks[name] = {
       sprites:   sprites.length ? sprites : existing.sprites,
-      archetype: archetype !== '' ? archetype : existing.archetype,
-      rotation:  rotation  !== '' ? rotation  : existing.rotation
+      archetype: archetype !== '' ? archetype : existing.archetype
     };
     save(KEYS.oppDecks, oppDecks);
     document.getElementById('new-opp-deck-name').value = '';
     document.getElementById('new-opp-deck-archetype').value = '';
-    document.getElementById('new-opp-deck-rotation').value = '';
     pendingOppSprites = [null, null];
     updateOppDeckTabSpritePreview(0);
     updateOppDeckTabSpritePreview(1);
@@ -1244,10 +1236,7 @@
         const nameSpan = document.createElement('span');
         nameSpan.className = 'deck-name-label';
         const sprites = oppSpritesHtml(name);
-        const { rotation: oppRot } = getOppDeckData(name);
-        let nameHtml = (sprites ? sprites + ' ' : '') + esc(name);
-        if (oppRot) nameHtml += ` <span class="rotation-badge">${esc(oppRot)}</span>`;
-        nameSpan.innerHTML = nameHtml;
+        nameSpan.innerHTML = (sprites ? sprites + ' ' : '') + esc(name);
         li.appendChild(nameSpan);
 
         const actions = document.createElement('div');
@@ -1303,7 +1292,6 @@
     document.getElementById('edit-deck-original-name').value = deckName;
     document.getElementById('edit-deck-name').value = deckName;
     document.getElementById('edit-deck-archetype').value = deck.archetype || '';
-    document.getElementById('edit-deck-rotation').value = deck.rotation || '';
     editDeckSprites[0] = deck.sprites[0] || null;
     editDeckSprites[1] = deck.sprites[1] || null;
     updateEditDeckSpritePreview(0);
@@ -1348,7 +1336,7 @@
     const sprites = editDeckSprites.filter(Boolean);
     const idx = decks.findIndex(d => d.name === originalName);
     if (idx === -1) return;
-    decks[idx] = { name: newName, sprites, archetype, rotation: document.getElementById('edit-deck-rotation').value.trim() };
+    decks[idx] = { name: newName, sprites, archetype };
     // Update match history references if name changed
     if (newName !== originalName) {
       matches = matches.map(m => m.myDeck === originalName ? { ...m, myDeck: newName } : m);
@@ -1384,11 +1372,10 @@
   }
 
   function openEditOppDeckModal(deckName) {
-    const { sprites, archetype, rotation } = getOppDeckData(deckName);
+    const { sprites, archetype } = getOppDeckData(deckName);
     document.getElementById('edit-opp-deck-original-name').value = deckName;
     document.getElementById('edit-opp-deck-name').value = deckName;
     document.getElementById('edit-opp-deck-archetype').value = archetype;
-    document.getElementById('edit-opp-deck-rotation').value = rotation;
     editOppDeckSprites[0] = sprites[0] || null;
     editOppDeckSprites[1] = sprites[1] || null;
     updateEditOppDeckSpritePreview(0);
@@ -1428,14 +1415,13 @@
     if (!newName) { alert('Deck name cannot be empty.'); return; }
     const sprites   = editOppDeckSprites.filter(Boolean);
     const archetype = document.getElementById('edit-opp-deck-archetype').value.trim();
-    const rotation  = document.getElementById('edit-opp-deck-rotation').value.trim();
     // If name changed, migrate oppDecks key and match history
     if (newName !== originalName) {
       delete oppDecks[originalName];
       matches = matches.map(m => m.oppDeck === originalName ? { ...m, oppDeck: newName } : m);
       save(KEYS.matches, matches);
     }
-    oppDecks[newName] = { sprites, archetype, rotation };
+    oppDecks[newName] = { sprites, archetype };
     save(KEYS.oppDecks, oppDecks);
     closeEditOppDeckModal();
     renderOppDecks();
@@ -1466,6 +1452,7 @@
     myDeckSel.value                                     = m.myDeck;
     document.getElementById('edit-event-type').value   = m.event;
     document.getElementById('edit-match-date').value   = m.date;
+    document.getElementById('edit-match-rotation').value = m.rotation || '';
     document.getElementById('edit-match-notes').value  = m.notes || '';
 
     // Set opp deck
@@ -1519,6 +1506,7 @@
     const result  = document.getElementById('edit-result-input').value;
     const event   = document.getElementById('edit-event-type').value;
     const date    = document.getElementById('edit-match-date').value;
+    const rotation = document.getElementById('edit-match-rotation').value.trim();
     const notes   = document.getElementById('edit-match-notes').value.trim();
 
     if (!myDeck)  { alert('Please select your deck.'); return; }
@@ -1529,7 +1517,7 @@
 
     const idx = matches.findIndex(m => m.id === id);
     if (idx === -1) return;
-    matches[idx] = { id, myDeck, oppDeck, result, event, date, notes };
+    matches[idx] = { id, myDeck, oppDeck, result, event, date, rotation, notes };
     save(KEYS.matches, matches);
     closeEditMatchModal();
     populateDeckSelects();
