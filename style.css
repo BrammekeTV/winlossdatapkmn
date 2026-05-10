@@ -20,16 +20,6 @@
   --shadow:      0 1px 3px rgba(0,0,0,.4);
   --header-bg:   #010409;
   --header-text: #f0f6fc;
-  --chip-win-bg:    #1c2e1e;
-  --chip-win-text:  #3fb950;
-  --chip-loss-bg:   #2c1418;
-  --chip-loss-text: #f85149;
-  --chip-tie-bg:    #1c2128;
-  --chip-tie-text:  #8b949e;
-  --chip-total-bg:  #121d2f;
-  --chip-total-text:#58a6ff;
-  --chip-pct-bg:    #21162e;
-  --chip-pct-text:  #c084fc;
   --arch-row-bg:    #1c2128;
   --arch-row-hover: #22272e;
   --breakdown-bg:   #1c2128;
@@ -53,16 +43,6 @@
   --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
   --header-bg:   #24292f;
   --header-text: #f0f6fc;
-  --chip-win-bg:    #dafbe1;
-  --chip-win-text:  #1a7f37;
-  --chip-loss-bg:   #ffebe9;
-  --chip-loss-text: #cf222e;
-  --chip-tie-bg:    #f6f8fa;
-  --chip-tie-text:  #6e7781;
-  --chip-total-bg:  #ddf4ff;
-  --chip-total-text:#0969da;
-  --chip-pct-bg:    #fbefff;
-  --chip-pct-text:  #8250df;
   --arch-row-bg:    #f6f8fa;
   --arch-row-hover: #eaeef2;
   --breakdown-bg:   #f6f8fa;
@@ -163,10 +143,14 @@ main { max-width: 900px; margin: 1.25rem auto; padding: 0 1rem 3rem; }
   box-shadow: var(--shadow);
 }
 .card h2 {
-  font-size: 1rem;
+  font-size: .72rem;
   font-weight: 600;
   margin-bottom: 1.25rem;
-  color: var(--text);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--border);
 }
 
 /* ── Forms ─────────────────────────────────────────────────── */
@@ -286,29 +270,45 @@ textarea { resize: vertical; }
 /* ── Empty message ───────────────────────────────────────────── */
 .empty-msg { color: var(--text-muted); font-size: .88rem; margin-top: 1rem; }
 
-/* ── Stats summary bar ───────────────────────────────────────── */
+/* ── Stats summary bar — compact inline metrics ──────────────── */
 .stats-summary {
   display: flex;
-  gap: .75rem;
   flex-wrap: wrap;
-  margin-bottom: 1.25rem;
+  gap: 0;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 .stat-chip {
   flex: 1;
-  min-width: 110px;
-  padding: .8rem 1rem;
-  border-radius: var(--radius);
+  min-width: 80px;
+  padding: .75rem .9rem;
   text-align: center;
-  font-weight: 700;
-  border: 1px solid var(--border);
+  font-weight: 600;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
 }
-.stat-chip .chip-val { font-size: 1.65rem; display: block; line-height: 1.2; }
-.stat-chip .chip-lbl { font-size: .75rem; margin-top: .15rem; display: block; }
-.stat-chip.total  { background: var(--chip-total-bg); color: var(--chip-total-text); }
-.stat-chip.wins   { background: var(--chip-win-bg);   color: var(--chip-win-text); }
-.stat-chip.losses { background: var(--chip-loss-bg);  color: var(--chip-loss-text); }
-.stat-chip.ties   { background: var(--chip-tie-bg);   color: var(--chip-tie-text); }
-.stat-chip.pct    { background: var(--chip-pct-bg);   color: var(--chip-pct-text); }
+.stat-chip:last-child { border-right: none; }
+.stat-chip .chip-val {
+  font-size: 1.3rem;
+  display: block;
+  line-height: 1.2;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.stat-chip .chip-lbl {
+  font-size: .7rem;
+  margin-top: .1rem;
+  display: block;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+/* Color only the number, not the whole card */
+.stat-chip.wins   .chip-val { color: var(--win); }
+.stat-chip.losses .chip-val { color: var(--loss); }
+.stat-chip.ties   .chip-val { color: var(--tie); }
+.stat-chip.pct    .chip-val { color: var(--primary); }
 
 /* ── Stats filter ────────────────────────────────────────────── */
 .stats-filters { display: flex; gap: .75rem; flex-wrap: wrap; }
@@ -403,8 +403,9 @@ textarea { resize: vertical; }
   .data-table th:last-child,
   .data-table td:last-child { display: none; }
   h1 { font-size: 1rem; }
-  .stats-summary { gap: .5rem; }
-  .stat-chip .chip-val { font-size: 1.3rem; }
+  .stats-summary { flex-wrap: wrap; }
+  .stat-chip { min-width: 70px; padding: .6rem .75rem; }
+  .stat-chip .chip-val { font-size: 1.1rem; }
 }
 
 /* ── Sprite inputs (add-deck form) ───────────────────────────── */
@@ -588,9 +589,11 @@ textarea { resize: vertical; }
   border-bottom: 1px solid var(--border);
 }
 .modal-header h3 {
-  font-size: .95rem;
+  font-size: .82rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
   margin: 0;
 }
 .btn-modal-close {
@@ -759,29 +762,34 @@ textarea { resize: vertical; }
 /* ── Archetype group header in deck list ─────────────────────── */
 li.archetype-group-header {
   justify-content: flex-start;
-  background: var(--primary);
-  color: #fff;
-  font-size: .75rem;
-  font-weight: 600;
-  padding: .3rem .85rem;
-  border-radius: var(--radius);
+  background: none;
   border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .6rem .85rem .2rem;
+  border-radius: 0;
   pointer-events: none;
+  margin-top: .5rem;
 }
 
 /* ── Archetype row in stats table ────────────────────────────── */
 tr.archetype-row td {
   background: var(--arch-row-bg);
-  border-top: 1px solid var(--primary);
+  border-top: 1px solid var(--border);
 }
 tr.archetype-row:hover td { background: var(--arch-row-hover); }
 .archetype-label {
-  font-size: .88rem;
-  color: var(--primary);
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--text);
 }
 .arch-chevron {
   font-size: .7rem;
-  color: var(--primary);
+  color: var(--text-muted);
   display: inline-block;
   transition: transform .15s;
   line-height: 1;
@@ -802,8 +810,10 @@ tr.indent td:first-child {
   flex-wrap: wrap;
   gap: .75rem;
   margin-bottom: 1.25rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--border);
 }
-.stats-top-bar h2 { margin-bottom: 0; }
+.stats-top-bar h2 { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
 .stats-top-actions {
   display: flex;
   align-items: center;
