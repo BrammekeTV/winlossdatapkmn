@@ -876,8 +876,8 @@
       //   rail = rightmost dot edge = dot of the widest item → closest to pie
       // Right panel (items right-aligned, dot at the LEFT of each item):
       //   rail = leftmost dot edge = dot of the widest item → closest to pie
-      let leftRailX  = -Infinity;
-      let rightRailX =  Infinity;
+      let leftRailX  = offX;                    // fallback: canvas left edge
+      let rightRailX = offX + canvasRect.width; // fallback: canvas right edge
       leftItems.forEach(({ i }) => {
         const dotEl = layoutEl.querySelector(`[data-pie-index="${i}"] .deck-pie-legend-dot`);
         if (dotEl) leftRailX  = Math.max(leftRailX,  dotEl.getBoundingClientRect().right - layoutRect.left);
