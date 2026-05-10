@@ -26,12 +26,12 @@
   // Migrate old string-based decks to objects
   decks = decks.map(d => typeof d === 'string' ? { name: d, sprites: [], archetype: '', rotation: '' } : { ...d, archetype: d.archetype || '', rotation: d.rotation || '' });
 
-  // Migrate oppDecks from { name: string[] } to { name: { sprites: string[], archetype: string } }
+  // Migrate oppDecks from { name: string[] } to { name: { sprites: string[], archetype: string, rotation: string } }
   Object.keys(oppDecks).forEach(name => {
     if (Array.isArray(oppDecks[name])) {
-      oppDecks[name] = { sprites: oppDecks[name], archetype: '' };
+      oppDecks[name] = { sprites: oppDecks[name], archetype: '', rotation: '' };
     } else if (oppDecks[name] && typeof oppDecks[name] === 'object') {
-      oppDecks[name] = { sprites: oppDecks[name].sprites || [], archetype: oppDecks[name].archetype || '' };
+      oppDecks[name] = { sprites: oppDecks[name].sprites || [], archetype: oppDecks[name].archetype || '', rotation: oppDecks[name].rotation || '' };
     }
   });
 
@@ -1142,9 +1142,9 @@
 
   function getOppDeckData(deckName) {
     const deck = oppDecks[deckName];
-    if (!deck) return { sprites: [], archetype: '' };
-    if (Array.isArray(deck)) return { sprites: deck, archetype: '' };
-    return { sprites: deck.sprites || [], archetype: deck.archetype || '' };
+    if (!deck) return { sprites: [], archetype: '', rotation: '' };
+    if (Array.isArray(deck)) return { sprites: deck, archetype: '', rotation: '' };
+    return { sprites: deck.sprites || [], archetype: deck.archetype || '', rotation: deck.rotation || '' };
   }
 
   // ────────────────────────────────────────────────────────────
@@ -1190,14 +1190,17 @@
     if (!name) return;
     const sprites   = pendingOppSprites.filter(Boolean);
     const archetype = document.getElementById('new-opp-deck-archetype').value.trim();
+    const rotation  = document.getElementById('new-opp-deck-rotation').value.trim();
     const existing  = getOppDeckData(name);
     oppDecks[name] = {
       sprites:   sprites.length ? sprites : existing.sprites,
-      archetype: archetype !== '' ? archetype : existing.archetype
+      archetype: archetype !== '' ? archetype : existing.archetype,
+      rotation:  rotation  !== '' ? rotation  : existing.rotation
     };
     save(KEYS.oppDecks, oppDecks);
     document.getElementById('new-opp-deck-name').value = '';
     document.getElementById('new-opp-deck-archetype').value = '';
+    document.getElementById('new-opp-deck-rotation').value = '';
     pendingOppSprites = [null, null];
     updateOppDeckTabSpritePreview(0);
     updateOppDeckTabSpritePreview(1);
@@ -1241,7 +1244,10 @@
         const nameSpan = document.createElement('span');
         nameSpan.className = 'deck-name-label';
         const sprites = oppSpritesHtml(name);
-        nameSpan.innerHTML = (sprites ? sprites + ' ' : '') + esc(name);
+        const { rotation: oppRot } = getOppDeckData(name);
+        let nameHtml = (sprites ? sprites + ' ' : '') + esc(name);
+        if (oppRot) nameHtml += ` <span class="rotation-badge">${esc(oppRot)}</span>`;
+        nameSpan.innerHTML = nameHtml;
         li.appendChild(nameSpan);
 
         const actions = document.createElement('div');
@@ -1378,10 +1384,11 @@
   }
 
   function openEditOppDeckModal(deckName) {
-    const { sprites, archetype } = getOppDeckData(deckName);
+    const { sprites, archetype, rotation } = getOppDeckData(deckName);
     document.getElementById('edit-opp-deck-original-name').value = deckName;
     document.getElementById('edit-opp-deck-name').value = deckName;
     document.getElementById('edit-opp-deck-archetype').value = archetype;
+    document.getElementById('edit-opp-deck-rotation').value = rotation;
     editOppDeckSprites[0] = sprites[0] || null;
     editOppDeckSprites[1] = sprites[1] || null;
     updateEditOppDeckSpritePreview(0);
@@ -1421,13 +1428,14 @@
     if (!newName) { alert('Deck name cannot be empty.'); return; }
     const sprites   = editOppDeckSprites.filter(Boolean);
     const archetype = document.getElementById('edit-opp-deck-archetype').value.trim();
+    const rotation  = document.getElementById('edit-opp-deck-rotation').value.trim();
     // If name changed, migrate oppDecks key and match history
     if (newName !== originalName) {
       delete oppDecks[originalName];
       matches = matches.map(m => m.oppDeck === originalName ? { ...m, oppDeck: newName } : m);
       save(KEYS.matches, matches);
     }
-    oppDecks[newName] = { sprites, archetype };
+    oppDecks[newName] = { sprites, archetype, rotation };
     save(KEYS.oppDecks, oppDecks);
     closeEditOppDeckModal();
     renderOppDecks();
