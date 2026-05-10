@@ -214,6 +214,8 @@ textarea { resize: vertical; }
 /* ── Stats filter ────────────────────────────────────────────── */
 .stats-filters { display: flex; gap: 1rem; flex-wrap: wrap; }
 .stats-filter { flex: 1 1 200px; max-width: 300px; }
+.stats-date-range { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .5rem; }
+.stats-date-range .form-group { flex: 1 1 160px; max-width: 220px; }
 
 /* ── Data table ─────────────────────────────────────────────── */
 .data-table {
