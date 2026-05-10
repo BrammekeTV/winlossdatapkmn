@@ -865,30 +865,23 @@
 
       const { x: cx, y: cy } = meta.data[0];
 
-      // ── Fixed spine x per side — always outside the pie's bounding circle ───
+      // ── Per-connector L-shaped lines — no shared spine, no overlaps ─────────
       //
-      // The connector shape is a 5-point L-connector:
+      // Each connector uses a 4-point shape where the vertical drop happens at the
+      // elbow's own x coordinate:
       //
-      //   pieEdge → elbow → (spineX, elbowY) → (spineX, itemMidY) → dot
+      //   pieEdge → elbow → (elbowX, itemMidY) → dot
       //
-      // Each segment type is provably crossing-free:
-      //   1. pieEdge→elbow   : radial outward — diverges from center, never crosses
-      //   2. elbow→spine     : purely horizontal at unique elbowY per slice — never crosses
-      //   3. spine (vertical): runs at a fixed x outside the pie circle — never crosses the chart;
-      //                        ranges don't invert because items are sin-sorted top→bottom,
-      //                        matching the elbowY order exactly
-      //   4. spine→dot       : purely horizontal at unique itemMidY per item — never crosses
+      // Because every slice has a unique midAngle, every elbowX is unique.
+      // Vertical segments at distinct x-values can never intersect each other,
+      // and since elbowX is always at distance (outerR + armLen) from center the
+      // vertical drop is always outside the pie's bounding circle.
+      //
+      // Segment guarantees:
+      //   1. pieEdge→elbow         : radial outward — diverges from center, never crosses
+      //   2. elbow→(elbowX,midY)   : vertical at unique elbowX — parallel segments never cross
+      //   3. (elbowX,midY)→dot     : horizontal at unique itemMidY — never crosses another
       const armLen = 20;
-      // Extra gap between the outermost pie edge+arm and the vertical spine,
-      // so the spine is always visually clear of the pie circle.
-      const spineGap = 8;
-      let maxOuterR = 0;
-      [...leftItems, ...rightItems].forEach(({ i }) => {
-        const arc = meta.data[i];
-        if (arc) maxOuterR = Math.max(maxOuterR, arc.outerRadius);
-      });
-      const leftSpineX  = offX + cx - maxOuterR - armLen - spineGap;
-      const rightSpineX = offX + cx + maxOuterR + armLen + spineGap;
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('pie-connector-svg');
@@ -910,31 +903,28 @@
         const pieEdgeX = offX + cx + Math.cos(midAngle) * outerR;
         const pieEdgeY = offY + cy + Math.sin(midAngle) * outerR;
 
-        // P2: radial elbow — just outside the pie (short arm)
+        // P2: radial elbow — just outside the pie (short arm); unique x per slice
         const elbowX = offX + cx + Math.cos(midAngle) * (outerR + armLen);
         const elbowY = offY + cy + Math.sin(midAngle) * (outerR + armLen);
 
-        // P3: horizontal run to the spine (same elbowY — purely horizontal)
-        const spineX = isLeft ? leftSpineX : rightSpineX;
-
-        // P4: vertical drop along the spine to the item's vertical midpoint
+        // P3: drop vertically from elbow to the item's vertical midpoint (unique itemMidY)
         const itemRect = legendItemEl.getBoundingClientRect();
         const itemMidY = itemRect.top + itemRect.height / 2 - layoutRect.top;
 
-        // P5: horizontal run to the dot's near edge
+        // P4: horizontal run from (elbowX, itemMidY) to the dot's near edge
         const dotEl   = legendItemEl.querySelector('.deck-pie-legend-dot');
         const dotRect = dotEl ? dotEl.getBoundingClientRect() : null;
         const dotEdgeX = dotRect
           ? (isLeft
               ? dotRect.right - layoutRect.left   // dot right edge for left-panel items
               : dotRect.left  - layoutRect.left)  // dot left edge for right-panel items
-          : spineX;
+          : elbowX;
 
         const color = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
 
         const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
         polyline.setAttribute('points',
-          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${spineX},${elbowY} ${spineX},${itemMidY} ${dotEdgeX},${itemMidY}`);
+          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${elbowX},${itemMidY} ${dotEdgeX},${itemMidY}`);
         polyline.setAttribute('fill',         'none');
         polyline.setAttribute('stroke',       color);
         polyline.setAttribute('stroke-width', '1.5');
