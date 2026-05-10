@@ -811,7 +811,8 @@
           filtered = filtered.filter(m => m.date && new Date(m.date + 'T00:00:00') >= from);
         }
         if (toVal) {
-          const to = new Date(toVal + 'T23:59:59');
+          const to = new Date(toVal + 'T00:00:00');
+          to.setHours(23, 59, 59, 999);
           filtered = filtered.filter(m => m.date && new Date(m.date + 'T00:00:00') <= to);
         }
       } else if (datePreset === 'month') {
