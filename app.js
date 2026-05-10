@@ -865,6 +865,14 @@
 
       const { x: cx, y: cy } = meta.data[0];
 
+      // Use the inner edge of each panel as a fixed connection rail.
+      // All connectors on each side terminate at the same x-coordinate, so the
+      // y-ordering of endpoints is identical to the y-ordering of elbows
+      // (both are determined by the sin-sorted midAngle order). This is the key
+      // property that prevents connectors from ever crossing each other.
+      const leftRailX  = leftEl.getBoundingClientRect().right - layoutRect.left;
+      const rightRailX = rightEl.getBoundingClientRect().left  - layoutRect.left;
+
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('pie-connector-svg');
       svg.setAttribute('aria-hidden', 'true');
@@ -879,32 +887,29 @@
         if (!arc) return;
 
         const outerR = arc.outerRadius;
-        // Extend radially 20 px past the outer edge before turning toward the legend item;
-        // this guarantees the elbow point is fully outside the pie circle.
         const armLen = 20;
         const isLeft = Math.cos(midAngle) < 0;
 
-        // P1: point on the pie outer edge at this slice's mid-angle
+        // P1: pie outer edge at the slice's mid-angle
         const pieEdgeX = offX + cx + Math.cos(midAngle) * outerR;
         const pieEdgeY = offY + cy + Math.sin(midAngle) * outerR;
 
-        // P2: radial elbow — safely outside the pie
+        // P2: radial elbow — safely outside the pie circle
         const elbowX = offX + cx + Math.cos(midAngle) * (outerR + armLen);
         const elbowY = offY + cy + Math.sin(midAngle) * (outerR + armLen);
 
-        // P3: inner edge of the legend item (dot side), at the item's vertical midpoint.
-        // Items are sorted top-to-bottom by midAngle, matching slice order, so lines
-        // drawn this way will never cross each other.
+        // P3: fixed-x rail at the panel's inner edge, at the item's vertical midpoint.
+        // Using a fixed railX per side means endpoint x-values are identical for all
+        // connectors on that side, so their relative y-order is preserved end-to-end
+        // and lines cannot cross.
         const itemRect = legendItemEl.getBoundingClientRect();
         const itemMidY = itemRect.top + itemRect.height / 2 - layoutRect.top;
-        const dotEdgeX = isLeft
-          ? itemRect.right - layoutRect.left   // dot is at the RIGHT of left-panel items
-          : itemRect.left  - layoutRect.left;  // dot is at the LEFT  of right-panel items
+        const railX = isLeft ? leftRailX : rightRailX;
 
         const color = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
 
         const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-        polyline.setAttribute('points', `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${dotEdgeX},${itemMidY}`);
+        polyline.setAttribute('points', `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${railX},${itemMidY}`);
         polyline.setAttribute('fill',         'none');
         polyline.setAttribute('stroke',       color);
         polyline.setAttribute('stroke-width', '1.5');
