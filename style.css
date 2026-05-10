@@ -1,42 +1,8 @@
 /* ── Reset & base ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Light theme (default) ─────────────────────────────────── */
+/* ── Dark theme (application default) ──────────────────────── */
 :root {
-  --bg:          #f6f8fa;
-  --surface:     #ffffff;
-  --border:      #d0d7de;
-  --primary:     #0969da;
-  --primary-h:   #0550ae;
-  --win:         #1a7f37;
-  --win-h:       #116329;
-  --loss:        #cf222e;
-  --loss-h:      #a40e26;
-  --tie:         #6e7781;
-  --tie-h:       #57606a;
-  --text:        #1f2328;
-  --text-muted:  #656d76;
-  --radius:      8px;
-  --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
-  --header-bg:   #24292f;
-  --header-text: #f0f6fc;
-  --chip-win-bg:    #dafbe1;
-  --chip-win-text:  #1a7f37;
-  --chip-loss-bg:   #ffebe9;
-  --chip-loss-text: #cf222e;
-  --chip-tie-bg:    #f6f8fa;
-  --chip-tie-text:  #6e7781;
-  --chip-total-bg:  #ddf4ff;
-  --chip-total-text:#0969da;
-  --chip-pct-bg:    #fbefff;
-  --chip-pct-text:  #8250df;
-  --arch-row-bg:    #f6f8fa;
-  --arch-row-hover: #eaeef2;
-  --breakdown-bg:   #f6f8fa;
-}
-
-/* ── Dark theme ─────────────────────────────────────────────── */
-[data-theme="dark"] {
   --bg:          #0d1117;
   --surface:     #161b22;
   --border:      #30363d;
@@ -50,6 +16,7 @@
   --tie-h:       #b1bac4;
   --text:        #e6edf3;
   --text-muted:  #8b949e;
+  --radius:      8px;
   --shadow:      0 1px 3px rgba(0,0,0,.4);
   --header-bg:   #010409;
   --header-text: #f0f6fc;
@@ -66,6 +33,39 @@
   --arch-row-bg:    #1c2128;
   --arch-row-hover: #22272e;
   --breakdown-bg:   #1c2128;
+}
+
+/* ── Light theme override ───────────────────────────────────── */
+[data-theme="light"] {
+  --bg:          #f6f8fa;
+  --surface:     #ffffff;
+  --border:      #d0d7de;
+  --primary:     #0969da;
+  --primary-h:   #0550ae;
+  --win:         #1a7f37;
+  --win-h:       #116329;
+  --loss:        #cf222e;
+  --loss-h:      #a40e26;
+  --tie:         #6e7781;
+  --tie-h:       #57606a;
+  --text:        #1f2328;
+  --text-muted:  #656d76;
+  --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --header-bg:   #24292f;
+  --header-text: #f0f6fc;
+  --chip-win-bg:    #dafbe1;
+  --chip-win-text:  #1a7f37;
+  --chip-loss-bg:   #ffebe9;
+  --chip-loss-text: #cf222e;
+  --chip-tie-bg:    #f6f8fa;
+  --chip-tie-text:  #6e7781;
+  --chip-total-bg:  #ddf4ff;
+  --chip-total-text:#0969da;
+  --chip-pct-bg:    #fbefff;
+  --chip-pct-text:  #8250df;
+  --arch-row-bg:    #f6f8fa;
+  --arch-row-hover: #eaeef2;
+  --breakdown-bg:   #f6f8fa;
 }
 
 body {
@@ -117,14 +117,11 @@ h1 {
 }
 .btn-theme-toggle:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.35); }
 
-/* Show correct icon per theme */
-[data-theme="dark"]  .theme-icon-dark  { display: inline; }
-[data-theme="dark"]  .theme-icon-light { display: none; }
+/* Show correct icon per theme — dark is default, light is override */
+.theme-icon-dark  { display: inline; }
+.theme-icon-light { display: none; }
 [data-theme="light"] .theme-icon-light { display: inline; }
 [data-theme="light"] .theme-icon-dark  { display: none; }
-/* fallback when no data-theme yet (html defaults to dark) */
-:root:not([data-theme="light"]) .theme-icon-dark  { display: inline; }
-:root:not([data-theme="light"]) .theme-icon-light { display: none; }
 
 /* ── Tabs ──────────────────────────────────────────────────── */
 .tabs {

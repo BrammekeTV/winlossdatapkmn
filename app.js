@@ -1722,13 +1722,22 @@
     const html = document.documentElement;
     const btn = document.getElementById('theme-toggle');
     const stored = localStorage.getItem('pkmn_theme');
-    if (stored === 'light') html.setAttribute('data-theme', 'light');
-    // default is already dark (set in HTML attribute)
+    // Apply stored preference; default is dark (via :root CSS variables)
+    if (stored === 'light') {
+      html.setAttribute('data-theme', 'light');
+    } else if (stored === 'dark') {
+      html.removeAttribute('data-theme'); // let :root (dark) take effect
+    }
     if (btn) {
       btn.addEventListener('click', () => {
-        const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-        html.setAttribute('data-theme', next);
-        localStorage.setItem('pkmn_theme', next);
+        const isLight = html.getAttribute('data-theme') === 'light';
+        if (isLight) {
+          html.removeAttribute('data-theme'); // revert to dark (:root)
+          localStorage.setItem('pkmn_theme', 'dark');
+        } else {
+          html.setAttribute('data-theme', 'light');
+          localStorage.setItem('pkmn_theme', 'light');
+        }
       });
     }
   })();
