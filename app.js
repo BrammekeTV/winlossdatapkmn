@@ -803,7 +803,11 @@
       const today = new Date();
       today.setHours(23, 59, 59, 999);
 
-      if (datePreset === 'custom') {
+      if (datePreset === 'rotation') {
+        const rotation = new Date(today.getFullYear(), 3, 10); // April 10th (month is 0-indexed)
+        rotation.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(m => m.date && new Date(m.date + 'T00:00:00') >= rotation);
+      } else if (datePreset === 'custom') {
         const fromVal = statsDateFrom.value; // 'YYYY-MM-DD' or ''
         const toVal   = statsDateTo.value;
         if (fromVal) {
