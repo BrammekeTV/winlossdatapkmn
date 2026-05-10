@@ -865,13 +865,27 @@
 
       const { x: cx, y: cy } = meta.data[0];
 
-      // Use the inner edge of each panel as a fixed connection rail.
-      // All connectors on each side terminate at the same x-coordinate, so the
-      // y-ordering of endpoints is identical to the y-ordering of elbows
-      // (both are determined by the sin-sorted midAngle order). This is the key
-      // property that prevents connectors from ever crossing each other.
-      const leftRailX  = leftEl.getBoundingClientRect().right - layoutRect.left;
-      const rightRailX = rightEl.getBoundingClientRect().left  - layoutRect.left;
+      // ── Compute per-side rails anchored to the actual dot elements ──────────
+      // The dot closest to the pie on each side defines the rail x.  Using one
+      // fixed x per side means all connector endpoints share the same x-value,
+      // so their vertical order is identical to the vertical order of the elbows
+      // (both driven by sin-sort), which is a sufficient condition for the
+      // elbow→rail segments never to cross.
+      //
+      // Left panel (items left-aligned, dot at the RIGHT of each item):
+      //   rail = rightmost dot edge = dot of the widest item → closest to pie
+      // Right panel (items right-aligned, dot at the LEFT of each item):
+      //   rail = leftmost dot edge = dot of the widest item → closest to pie
+      let leftRailX  = -Infinity;
+      let rightRailX =  Infinity;
+      leftItems.forEach(({ i }) => {
+        const dotEl = layoutEl.querySelector(`[data-pie-index="${i}"] .deck-pie-legend-dot`);
+        if (dotEl) leftRailX  = Math.max(leftRailX,  dotEl.getBoundingClientRect().right - layoutRect.left);
+      });
+      rightItems.forEach(({ i }) => {
+        const dotEl = layoutEl.querySelector(`[data-pie-index="${i}"] .deck-pie-legend-dot`);
+        if (dotEl) rightRailX = Math.min(rightRailX, dotEl.getBoundingClientRect().left  - layoutRect.left);
+      });
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('pie-connector-svg');
@@ -898,18 +912,27 @@
         const elbowX = offX + cx + Math.cos(midAngle) * (outerR + armLen);
         const elbowY = offY + cy + Math.sin(midAngle) * (outerR + armLen);
 
-        // P3: fixed-x rail at the panel's inner edge, at the item's vertical midpoint.
-        // Using a fixed railX per side means endpoint x-values are identical for all
-        // connectors on that side, so their relative y-order is preserved end-to-end
-        // and lines cannot cross.
+        // P3: turn at the shared rail x, at the item's vertical midpoint.
+        // Fixed railX per side → endpoint x-order matches elbow y-order → no crossings.
         const itemRect = legendItemEl.getBoundingClientRect();
         const itemMidY = itemRect.top + itemRect.height / 2 - layoutRect.top;
         const railX = isLeft ? leftRailX : rightRailX;
 
+        // P4: actual dot edge for this item (horizontal segment from P3 → P4).
+        // Horizontal segments are each at a unique y, so they can never cross each other.
+        const dotEl   = legendItemEl.querySelector('.deck-pie-legend-dot');
+        const dotRect = dotEl ? dotEl.getBoundingClientRect() : null;
+        const dotEdgeX = dotRect
+          ? (isLeft
+              ? dotRect.right  - layoutRect.left   // dot's right edge on left-panel items
+              : dotRect.left   - layoutRect.left)  // dot's left edge on right-panel items
+          : railX;
+
         const color = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
 
         const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-        polyline.setAttribute('points', `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${railX},${itemMidY}`);
+        polyline.setAttribute('points',
+          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${railX},${itemMidY} ${dotEdgeX},${itemMidY}`);
         polyline.setAttribute('fill',         'none');
         polyline.setAttribute('stroke',       color);
         polyline.setAttribute('stroke-width', '1.5');
