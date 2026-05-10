@@ -791,9 +791,10 @@
     let filtered = eventFilter === 'all' ? matches : matches.filter(m => m.event === eventFilter);
     if (deckFilter !== 'all') filtered = filtered.filter(m => m.myDeck === deckFilter);
     if (rotationFilter) {
+      const deckRotationMap = new Map(decks.map(d => [d.name, (d.rotation || '').toLowerCase()]));
       filtered = filtered.filter(m => {
-        const deck = decks.find(d => d.name === m.myDeck);
-        return deck && (deck.rotation || '').toLowerCase().includes(rotationFilter);
+        const rot = deckRotationMap.get(m.myDeck) || '';
+        return rot.includes(rotationFilter);
       });
     }
 
