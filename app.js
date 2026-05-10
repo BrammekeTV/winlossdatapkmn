@@ -609,8 +609,20 @@
   // STATS + CHARTS
   // ────────────────────────────────────────────────────────────
   const statsEventFilter = document.getElementById('stats-event-filter');
+  const statsDateFilter  = document.getElementById('stats-date-filter');
+  const statsDateRange   = document.getElementById('stats-date-range');
+  const statsDateFrom    = document.getElementById('stats-date-from');
+  const statsDateTo      = document.getElementById('stats-date-to');
+
   statsEventFilter.addEventListener('change', renderStats);
   document.getElementById('stats-deck-filter').addEventListener('change', renderStats);
+  statsDateFilter.addEventListener('change', () => {
+    const isCustom = statsDateFilter.value === 'custom';
+    statsDateRange.classList.toggle('hidden', !isCustom);
+    renderStats();
+  });
+  statsDateFrom.addEventListener('change', renderStats);
+  statsDateTo.addEventListener('change', renderStats);
 
   // "Split Archetypes" toggle
   document.getElementById('split-arch-toggle').addEventListener('change', function () {
@@ -781,9 +793,50 @@
   function renderStats() {
     const eventFilter = statsEventFilter.value;
     const deckFilter  = document.getElementById('stats-deck-filter').value;
+    const datePreset  = statsDateFilter.value;
 
     let filtered = eventFilter === 'all' ? matches : matches.filter(m => m.event === eventFilter);
     if (deckFilter !== 'all') filtered = filtered.filter(m => m.myDeck === deckFilter);
+
+    // Date filtering
+    if (datePreset !== 'all') {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      if (datePreset === 'rotation') {
+        const rotation = new Date(today.getFullYear(), 3, 10); // April 10th (month is 0-indexed)
+        rotation.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(m => m.date && new Date(m.date + 'T00:00:00') >= rotation);
+      } else if (datePreset === 'custom') {
+        const fromVal = statsDateFrom.value; // 'YYYY-MM-DD' or ''
+        const toVal   = statsDateTo.value;
+        if (fromVal) {
+          const from = new Date(fromVal + 'T00:00:00');
+          filtered = filtered.filter(m => m.date && new Date(m.date + 'T00:00:00') >= from);
+        }
+        // If no "to" date is chosen, default to end of today
+        const to = toVal ? new Date(toVal + 'T00:00:00') : new Date();
+        to.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(m => m.date && new Date(m.date + 'T00:00:00') <= to);
+      } else if (datePreset === 'month') {
+        filtered = filtered.filter(m => {
+          if (!m.date) return false;
+          const d = new Date(m.date + 'T00:00:00');
+          return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+        });
+      } else if (datePreset === 'year') {
+        filtered = filtered.filter(m => {
+          if (!m.date) return false;
+          return new Date(m.date + 'T00:00:00').getFullYear() === today.getFullYear();
+        });
+      } else {
+        const days = parseInt(datePreset, 10);
+        const cutoff = new Date(today);
+        cutoff.setDate(cutoff.getDate() - days + 1);
+        cutoff.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(m => m.date && new Date(m.date + 'T00:00:00') >= cutoff);
+      }
+    }
 
     const total  = filtered.length;
     const wins   = filtered.filter(m => m.result === 'Win').length;

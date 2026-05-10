@@ -194,6 +194,29 @@
               <option value="all">All Decks</option>
             </select>
           </div>
+          <div class="stats-filter form-group">
+            <label for="stats-date-filter">Filter by Date</label>
+            <select id="stats-date-filter">
+              <option value="all">All Time</option>
+              <option value="rotation">Since Rotation (April 10th)</option>
+              <option value="7">Past 7 Days</option>
+              <option value="30">Past 30 Days</option>
+              <option value="90">Past 90 Days</option>
+              <option value="month">This Month</option>
+              <option value="year">This Year</option>
+              <option value="custom">Custom Range…</option>
+            </select>
+          </div>
+        </div>
+        <div id="stats-date-range" class="stats-date-range hidden">
+          <div class="form-group">
+            <label for="stats-date-from">From</label>
+            <input type="date" id="stats-date-from" />
+          </div>
+          <div class="form-group">
+            <label for="stats-date-to">To <span class="optional">(default: today)</span></label>
+            <input type="date" id="stats-date-to" />
+          </div>
         </div>
         <div id="stats-summary" class="stats-summary"></div>
         <div id="stats-chart-wrap" class="stats-chart-wrap hidden">
