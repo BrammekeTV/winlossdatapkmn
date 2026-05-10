@@ -865,27 +865,27 @@
 
       const { x: cx, y: cy } = meta.data[0];
 
-      // ── Compute per-side rails anchored to the actual dot elements ──────────
-      // The dot closest to the pie on each side defines the rail x.  Using one
-      // fixed x per side means all connector endpoints share the same x-value,
-      // so their vertical order is identical to the vertical order of the elbows
-      // (both driven by sin-sort), which is a sufficient condition for the
-      // elbow→rail segments never to cross.
+      // ── Fixed spine x per side — always outside the pie's bounding circle ───
       //
-      // Left panel (items left-aligned, dot at the RIGHT of each item):
-      //   rail = rightmost dot edge = dot of the widest item → closest to pie
-      // Right panel (items right-aligned, dot at the LEFT of each item):
-      //   rail = leftmost dot edge = dot of the widest item → closest to pie
-      let leftRailX  = offX;                    // fallback: canvas left edge
-      let rightRailX = offX + canvasRect.width; // fallback: canvas right edge
-      leftItems.forEach(({ i }) => {
-        const dotEl = layoutEl.querySelector(`[data-pie-index="${i}"] .deck-pie-legend-dot`);
-        if (dotEl) leftRailX  = Math.max(leftRailX,  dotEl.getBoundingClientRect().right - layoutRect.left);
+      // The connector shape is a 5-point L-connector:
+      //
+      //   pieEdge → elbow → (spineX, elbowY) → (spineX, itemMidY) → dot
+      //
+      // Each segment type is provably crossing-free:
+      //   1. pieEdge→elbow   : radial outward — diverges from center, never crosses
+      //   2. elbow→spine     : purely horizontal at unique elbowY per slice — never crosses
+      //   3. spine (vertical): runs at a fixed x outside the pie circle — never crosses the chart;
+      //                        ranges don't invert because items are sin-sorted top→bottom,
+      //                        matching the elbowY order exactly
+      //   4. spine→dot       : purely horizontal at unique itemMidY per item — never crosses
+      const armLen = 20;
+      let maxOuterR = 0;
+      [...leftItems, ...rightItems].forEach(({ i }) => {
+        const arc = meta.data[i];
+        if (arc) maxOuterR = Math.max(maxOuterR, arc.outerRadius);
       });
-      rightItems.forEach(({ i }) => {
-        const dotEl = layoutEl.querySelector(`[data-pie-index="${i}"] .deck-pie-legend-dot`);
-        if (dotEl) rightRailX = Math.min(rightRailX, dotEl.getBoundingClientRect().left  - layoutRect.left);
-      });
+      const leftSpineX  = offX + cx - maxOuterR - armLen - 8;
+      const rightSpineX = offX + cx + maxOuterR + armLen + 8;
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('pie-connector-svg');
@@ -901,38 +901,37 @@
         if (!arc) return;
 
         const outerR = arc.outerRadius;
-        const armLen = 20;
         const isLeft = Math.cos(midAngle) < 0;
 
         // P1: pie outer edge at the slice's mid-angle
         const pieEdgeX = offX + cx + Math.cos(midAngle) * outerR;
         const pieEdgeY = offY + cy + Math.sin(midAngle) * outerR;
 
-        // P2: radial elbow — safely outside the pie circle
+        // P2: radial elbow — just outside the pie (short arm)
         const elbowX = offX + cx + Math.cos(midAngle) * (outerR + armLen);
         const elbowY = offY + cy + Math.sin(midAngle) * (outerR + armLen);
 
-        // P3: turn at the shared rail x, at the item's vertical midpoint.
-        // Fixed railX per side → endpoint x-order matches elbow y-order → no crossings.
+        // P3: horizontal run to the spine (same elbowY — purely horizontal)
+        const spineX = isLeft ? leftSpineX : rightSpineX;
+
+        // P4: vertical drop along the spine to the item's vertical midpoint
         const itemRect = legendItemEl.getBoundingClientRect();
         const itemMidY = itemRect.top + itemRect.height / 2 - layoutRect.top;
-        const railX = isLeft ? leftRailX : rightRailX;
 
-        // P4: actual dot edge for this item (horizontal segment from P3 → P4).
-        // Horizontal segments are each at a unique y, so they can never cross each other.
+        // P5: horizontal run to the dot's near edge
         const dotEl   = legendItemEl.querySelector('.deck-pie-legend-dot');
         const dotRect = dotEl ? dotEl.getBoundingClientRect() : null;
         const dotEdgeX = dotRect
           ? (isLeft
-              ? dotRect.right  - layoutRect.left   // dot's right edge on left-panel items
-              : dotRect.left   - layoutRect.left)  // dot's left edge on right-panel items
-          : railX;
+              ? dotRect.right - layoutRect.left   // dot right edge for left-panel items
+              : dotRect.left  - layoutRect.left)  // dot left edge for right-panel items
+          : spineX;
 
         const color = entry.isOther ? PIE_OTHER_COLOR : _sliceColor(i);
 
         const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
         polyline.setAttribute('points',
-          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${railX},${itemMidY} ${dotEdgeX},${itemMidY}`);
+          `${pieEdgeX},${pieEdgeY} ${elbowX},${elbowY} ${spineX},${elbowY} ${spineX},${itemMidY} ${dotEdgeX},${itemMidY}`);
         polyline.setAttribute('fill',         'none');
         polyline.setAttribute('stroke',       color);
         polyline.setAttribute('stroke-width', '1.5');
