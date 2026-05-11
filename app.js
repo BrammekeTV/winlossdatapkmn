@@ -719,7 +719,8 @@
         }]
       },
       options: {
-        responsive: false,
+        responsive: true,
+        maintainAspectRatio: true,
         plugins: {
           legend: { display: false },
           tooltip: {

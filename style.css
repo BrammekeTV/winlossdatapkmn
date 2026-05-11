@@ -459,14 +459,16 @@ textarea { resize: vertical; }
   .sidebar-nav {
     flex-direction: row;
     flex-wrap: nowrap;
-    overflow-x: auto;
+    overflow-x: hidden;
     padding: .25rem 0 0;
   }
   .tab-btn {
     border-left: none;
     border-bottom: 2px solid transparent;
-    flex: 0 0 auto;
-    padding: .55rem .85rem;
+    flex: 1;
+    min-width: 0;
+    padding: .45rem .2rem;
+    font-size: .72rem;
     text-align: center;
   }
   .tab-btn.active {
@@ -935,7 +937,13 @@ tr.indent td:first-child {
   font-size: .8rem;
 }
 
-/* ── Stats overall pie chart: deck-distribution layout ───────── */
+/* ── Stats table wrapper ─────────────────────────────────────── */
+.stats-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+
 .stats-chart-wrap {
   margin-bottom: 1.5rem;
 }
@@ -1000,4 +1008,6 @@ tr.indent td:first-child {
   .deck-pie-legend { align-items: center; text-align: center; max-width: 100%; }
   .deck-pie-legend-left .deck-pie-legend-item,
   .deck-pie-legend-left .deck-pie-legend-name { flex-direction: row; justify-content: flex-start; }
+  .deck-pie-canvas-wrap { width: 180px; }
+  .deck-pie-canvas-wrap canvas { width: 180px !important; height: 180px !important; }
 }
