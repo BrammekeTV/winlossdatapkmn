@@ -707,6 +707,9 @@
     const bgColors = displayEntries.map((e, i) => e.isOther ? PIE_OTHER_COLOR : _sliceColor(i));
 
     const canvas = document.getElementById('overall-pie');
+    const pieSize = window.innerWidth <= 640 ? 180 : 260;
+    canvas.width  = pieSize;
+    canvas.height = pieSize;
     overallChartInst = new Chart(canvas, {
       type: 'pie',
       data: {
@@ -719,8 +722,7 @@
         }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
+        responsive: false,
         plugins: {
           legend: { display: false },
           tooltip: {
