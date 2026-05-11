@@ -465,8 +465,10 @@ textarea { resize: vertical; }
   .tab-btn {
     border-left: none;
     border-bottom: 2px solid transparent;
-    flex: 0 0 auto;
-    padding: .55rem .85rem;
+    flex: 1;
+    min-width: 0;
+    padding: .45rem .2rem;
+    font-size: .75rem;
     text-align: center;
   }
   .tab-btn.active {
@@ -935,7 +937,13 @@ tr.indent td:first-child {
   font-size: .8rem;
 }
 
-/* ── Stats overall pie chart: deck-distribution layout ───────── */
+/* ── Stats table wrapper ─────────────────────────────────────── */
+.stats-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+
 .stats-chart-wrap {
   margin-bottom: 1.5rem;
 }
