@@ -660,6 +660,7 @@
   });
 
   let overallChartInst = null;
+  const MOBILE_BREAKPOINT = 640;
 
   // ── Pantone-inspired pie palette (10 colours + "Other" grey) ────────────────
   const PIE_PALETTE = [
@@ -707,7 +708,7 @@
     const bgColors = displayEntries.map((e, i) => e.isOther ? PIE_OTHER_COLOR : _sliceColor(i));
 
     const canvas = document.getElementById('overall-pie');
-    const pieSize = window.innerWidth <= 640 ? 180 : 260;
+    const pieSize = window.innerWidth <= MOBILE_BREAKPOINT ? 180 : 260;
     canvas.width  = pieSize;
     canvas.height = pieSize;
     overallChartInst = new Chart(canvas, {

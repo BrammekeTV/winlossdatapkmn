@@ -459,7 +459,7 @@ textarea { resize: vertical; }
   .sidebar-nav {
     flex-direction: row;
     flex-wrap: nowrap;
-    overflow-x: hidden;
+    overflow-x: auto;
     padding: .25rem 0 0;
   }
   .tab-btn {
@@ -468,7 +468,7 @@ textarea { resize: vertical; }
     flex: 1;
     min-width: 0;
     padding: .45rem .2rem;
-    font-size: .72rem;
+    font-size: .75rem;
     text-align: center;
   }
   .tab-btn.active {
